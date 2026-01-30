@@ -1,0 +1,62 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function hasClinicAccess(clinicId) {
+      return isAuthenticated() &&
+             exists(/databases/$(database)/documents/users/$(request.auth.uid)/clinics/$(clinicId));
+    }
+
+    function getUserRole(clinicId) {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)/clinics/$(clinicId)).data.role;
+    }
+
+    function hasPermission(permission) {
+      return isAuthenticated() &&
+             permission in get(/databases/$(database)/documents/users/$(request.auth.uid)).data.permissions;
+    }
+
+    // Clinics collection
+    match /clinics/{clinicId} {
+      allow read: if hasClinicAccess(clinicId);
+      allow write: if hasPermission('manage_clinic') && hasClinicAccess(clinicId);
+    }
+
+    // Users collection
+    match /users/{userId} {
+      allow read: if isOwner(userId) || hasClinicAccess(resource.data.clinicId);
+      allow write: if isOwner(userId) || (hasPermission('manage_staff') && hasClinicAccess(resource.data.clinicId));
+    }
+
+    // Patients collection
+    match /patients/{patientId} {
+      allow read: if hasPermission('view_patients') && hasClinicAccess(resource.data.clinicId);
+      allow write: if hasPermission('edit_patients') && hasClinicAccess(resource.data.clinicId);
+    }
+
+    // Appointments collection
+    match /appointments/{appointmentId} {
+      allow read, write: if hasPermission('manage_appointments') && hasClinicAccess(resource.data.clinicId);
+    }
+
+    // Invoices collection (Pro+ plans only)
+    match /invoices/{invoiceId} {
+      allow read, write: if hasPermission('access_billing') && hasClinicAccess(resource.data.clinicId) &&
+                           'billing' in get(/databases/$(database)/documents/subscriptions/$(resource.data.subscriptionId)).data.features;
+    }
+
+    // Subscriptions collection
+    match /subscriptions/{subscriptionId} {
+      allow read: if hasClinicAccess(resource.data.clinicId);
+      allow write: if hasPermission('manage_subscription') && hasClinicAccess(resource.data.clinicId);
+    }
+  }
+}
