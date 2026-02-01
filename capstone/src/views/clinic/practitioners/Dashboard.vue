@@ -1,19 +1,19 @@
 <template>
-  <div class="min-h-screen bg-gray-100">
-    <nav class="bg-white shadow-sm border-b">
+  <div class="min-h-screen bg-beige">
+    <nav class="bg-white shadow-sm border-b border-light">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex justify-between items-center py-4">
           <h1 class="text-2xl font-bold text-gray-900">Clinic Dashboard</h1>
           <div class="flex space-x-4">
             <router-link
               to="/patients"
-              class="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
+              class="text-gray-600 hover:text-brown px-3 py-2 rounded-md text-sm font-medium"
             >
               Patients
             </router-link>
             <router-link
               to="/appointments"
-              class="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
+              class="text-gray-600 hover:text-brown px-3 py-2 rounded-md text-sm font-medium"
             >
               Appointments
             </router-link>

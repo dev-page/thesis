@@ -11,7 +11,6 @@
       </div>
     </div>
 
-    <!-- Navigation -->
     <nav class="flex-1 p-4">
       <ul class="space-y-2">
         <li>
@@ -53,7 +52,6 @@
       </ul>
     </nav>
 
-    <!-- User Section -->
     <div class="p-4 border-t border-slate-700">
       <div class="flex items-center gap-3 px-4 py-3">
         <div class="h-10 w-10 rounded-full bg-purple-500 flex items-center justify-center text-white font-semibold">

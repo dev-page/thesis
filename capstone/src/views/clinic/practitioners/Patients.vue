@@ -1,7 +1,7 @@
 <template>
-  <div class="min-h-screen bg-gray-50">
+  <div class="min-h-screen bg-beige">
     <!-- Header -->
-    <div class="bg-white shadow-sm border-b">
+    <div class="bg-white shadow-sm border-b border-light">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex justify-between items-center py-6">
           <div>
@@ -11,7 +11,7 @@
           <button
             v-if="hasPermission('edit_patients')"
             @click="showAddPatientModal = true"
-            class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition"
+            class="bg-brown text-white px-4 py-2 rounded-lg hover:bg-opacity-90 transition"
           >
             Add Patient
           </button>
@@ -27,14 +27,13 @@
               v-model="searchQuery"
               type="text"
               placeholder="Search patients..."
-              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              class="w-full px-3 py-2 border border-light rounded-lg focus:ring-2 focus:ring-brown focus:border-transparent"
             />
           </div>
           <select
             v-model="statusFilter"
-            class="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          >
-            <option value="">All Status</option>
+            class="px-3 py-2 border border-light rounded-lg focus:ring-2 focus:ring-brown focus:border-transparent">
+            <option selected>All Status</option>
             <option value="active">Active</option>
             <option value="inactive">Inactive</option>
           </select>

@@ -9,9 +9,7 @@
         <p class="text-slate-400">Overview of customer relations and inquiries</p>
       </div>
 
-      <!-- Stats Cards -->
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <!-- Total Clients -->
         <div class="bg-slate-800 rounded-xl p-6 border border-slate-700">
           <div class="flex items-center justify-between mb-4">
             <div class="h-12 w-12 rounded-lg bg-purple-500/20 flex items-center justify-center">
@@ -67,7 +65,6 @@
         </div>
       </div>
 
-      <!-- Recent Inquiries -->
       <div class="bg-slate-800 rounded-xl p-6 border border-slate-700 mb-8">
         <h2 class="text-xl font-semibold text-white mb-6">Recent Inquiries</h2>
         <div class="space-y-3">
@@ -100,7 +97,6 @@
         </div>
       </div>
 
-      <!-- Client Status Distribution -->
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <!-- Status Breakdown -->
         <div class="bg-slate-800 rounded-xl p-6 border border-slate-700">
@@ -121,7 +117,6 @@
           </div>
         </div>
 
-        <!-- Recent Activity -->
         <div class="bg-slate-800 rounded-xl p-6 border border-slate-700">
           <h2 class="text-xl font-semibold text-white mb-6">Recent Activity</h2>
           <div class="space-y-4">
@@ -145,10 +140,10 @@
 
 <script>
 import { ref } from 'vue'
-import CRMSidebar from '@/components/crm/CRMSidebar.vue'
+import CRMSidebar from '@/components/manager/ManagerSidebar.vue'
 
 export default {
-  name: 'CRMDashboard',
+  name: 'ManagerDashboard',
   components: {
     CRMSidebar
   },

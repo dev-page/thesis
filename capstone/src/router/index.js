@@ -15,14 +15,24 @@ const router = createRouter({
         component: () => import('@/views/public/Login.vue'),
       },
       {
-        path: '/register',
+        path: '/register', //For clients/patients
         name: 'register',
         component: () => import('@/views/public/Register.vue'),
+      },
+      {
+        path: '/clinic/register',
+        name: 'register-clinic',
+        component: () => import('@/views/public/RegisterClinic.vue'),
       },
       {
         path: '/centers',
         name: 'centers',
         component: () => import('@/views/public/ViewCenters.vue'),
+      },
+      {
+        path: '/subscription',
+        name: 'subscription',
+        component: () => import('@/views/public/Subscription.vue'),
       },
       {
         path: '/dashboard',
@@ -89,6 +99,12 @@ const router = createRouter({
         path: '/supply/purchase-requests',
         name: 'supply-purchase-requests',
         component: () => import('@/views/admin/supply/SupplyPurchaseRequests.vue'),
+        beforeEnter: requireAuth,
+      },
+      {
+        path: '/practitioner/dashboard',
+        name: 'practitioner-dashboard',
+        component: () => import('@/views/clinic/practitioners/PractitionerDashboard.vue'),
         beforeEnter: requireAuth,
       },
     ],

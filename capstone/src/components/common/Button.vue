@@ -32,9 +32,9 @@ const buttonClasses = computed(() => {
   const baseClasses = 'font-medium rounded focus:outline-none focus:ring-2 focus:ring-offset-2 transition-colors'
 
   const variantClasses = {
-    primary: 'bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500',
-    secondary: 'bg-gray-200 text-gray-900 hover:bg-gray-300 focus:ring-gray-500',
-    danger: 'bg-red-600 text-white hover:bg-red-700 focus:ring-red-500'
+    primary: 'bg-brown text-white hover:bg-opacity-90 focus:ring-brown',
+    secondary: 'bg-light text-gray-900 hover:bg-opacity-90 focus:ring-light',
+    danger: 'bg-pink text-white hover:bg-opacity-90 focus:ring-pink'
   }
 
   const sizeClasses = {
