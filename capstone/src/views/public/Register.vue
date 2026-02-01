@@ -75,23 +75,19 @@ const register = async () => {
     await sendEmailVerification(userCredentials.user)
 
     const otp = generateOtp()
-    await setDoc(doc(db, 'otps', uid), {
+    await setDoc(doc(db, 'otp', uid), {
       code: otp,
       createdAt: serverTimestamp(),
       expiresAt: Date.now() + 5 * 60 * 1000,
     })
 
-    await setDoc(doc(db, 'users', uid), {
-      firstName: firstName.value,
-      lastName: lastName.value,
-      email: email.value,
-      birthDate: birthDate.value || null,
-      about: 'Hi! I am new here',
-      createdAt: serverTimestamp(),
-    })
+    localStorage.setItem('firstName', firstName.value)
+    localStorage.setItem('lastName', lastName.value)
+    localStorage.setItem('email', email.value)
+    localStorage.setItem('birthDate', birthDate.value)
 
-    toast.success('Account created successfully! Redirecting to login...')
-    setTimeout(() => router.push('/login'), 3000)
+    toast.success('Account created! Please check your email for OTP verification.')
+    setTimeout(() => router.push('/verify-otp'), 3000)
   } catch (err) {
     console.error(err)
     const friendlyMessages = {
