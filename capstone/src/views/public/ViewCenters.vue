@@ -6,46 +6,24 @@
           <span class="text-lg tracking-wide text-charcoal-900">AesthetiCare</span>
         </div>
 
-        <ul class="hidden md:flex items-center gap-6 lg:gap-10 text-[11px] tracking-[0.2em] uppercase text-charcoal-600">
-          <li>
-            <a class="relative text-charcoal-700 hover:text-gold-700 hover:font-bold transition-all duration-300
+        <div class="hidden md:flex items-center gap-6 lg:gap-10">
+          <ul class="flex items-center gap-6 lg:gap-10 text-[11px] tracking-[0.2em] uppercase text-charcoal-600">
+            <li>
+              <router-link to="/"
+                class="relative text-charcoal-700 hover:text-gold-700 hover:font-bold transition-all duration-300
                       before:absolute before:left-0 before:bottom-[-4px] before:w-0 before:h-[2px] before:bg-gold-700
-                      before:transition-all before:duration-300 hover:before:w-full">
-              Features
-            </a>
-          </li>
+                      before:transition-all before:duration-300 hover:before:w-full"
+              >
+                Homepage
+              </router-link>
+            </li>
+          </ul>
 
-          <li>
-            <a class="relative text-charcoal-700 hover:text-gold-700 hover:font-bold transition-all duration-300
-                      before:absolute before:left-0 before:bottom-[-4px] before:w-0 before:h-[2px] before:bg-gold-700
-                      before:transition-all before:duration-300 hover:before:w-full">
-              Solutions
-            </a>
-          </li>
-          <li>
-            <a class="relative text-charcoal-700 hover:text-gold-700 hover:font-bold transition-all duration-300
-                      before:absolute before:left-0 before:bottom-[-4px] before:w-0 before:h-[2px] before:bg-gold-700
-                      before:transition-all before:duration-300 hover:before:w-full">
-              Pricing
-            </a>
-          </li>
-          <li>
-            <router-link to="/centers"
-              class="flex items-center gap-2 px-4 py-2 rounded-full border-2 border-gold-500 text-gold-500 font-medium
-                    hover:bg-gold-500 hover:text-white transition-all duration-300"
+          <div class="relative inline-block text-left">
+            <button
+              @click="toggleDropdown"
+              class="inline-flex justify-center w-full px-3 sm:px-4 py-1.5 sm:py-2 rounded-full border border-gold-700 text-gold-700 text-xs sm:text-sm tracking-widest uppercase hover:bg-gold-700 hover:text-white transition focus:outline-none"
             >
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                  d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zM12 11a2 2 0 110-4 2 2 0 010 4z"
-                />
-              </svg>
-              Centers
-            </router-link>
-          </li>
-        </ul>
-
-        <div class="relative inline-block text-left" ref="dropdownRef">
-            <button @click="toggleDropdown" class="inline-flex justify-center w-full px-3 sm:px-4 py-1.5 sm:py-2 rounded-full border border-gold-700 text-gold-700 text-xs sm:text-sm tracking-widest uppercase hover:bg-gold-700 hover:text-white transition focus:outline-none">
               Guest Account
               <svg
                 class="ml-2 -mr-1 h-4 w-4 text-gold-700 group-hover:text-white transition"
@@ -58,21 +36,33 @@
               </svg>
             </button>
 
-            <div v-show="isOpen" class="absolute right-0 mt-2 w-40 origin-top-right bg-white border border-gray-200 rounded-md shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none z-50">
+            <div
+              v-show="isOpen"
+              class="absolute right-0 mt-2 w-40 origin-top-right bg-white border border-gray-200 rounded-md shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none z-50"
+            >
               <div class="py-1">
-                <button @click="select('Guest Account')"
-                  class="w-full text-left px-4 py-2 text-sm text-gold-700 bg-gold-50 font-medium">
+                <button
+                  @click="select('Guest Account')"
+                  class="w-full text-left px-4 py-2 text-sm text-gold-700 bg-gold-50 font-medium"
+                >
                   Guest Account
                 </button>
-                <router-link to="/login" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gold-100 hover:text-gold-700 transition">
+                <router-link
+                  to="/login"
+                  class="block px-4 py-2 text-sm text-gray-700 hover:bg-gold-100 hover:text-gold-700 transition"
+                >
                   Login
                 </router-link>
-                <router-link to="/register" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gold-100 hover:text-gold-700 transition">
+                <router-link
+                  to="/register"
+                  class="block px-4 py-2 text-sm text-gray-700 hover:bg-gold-100 hover:text-gold-700 transition"
+                >
                   Register
                 </router-link>
               </div>
             </div>
           </div>
+        </div>
       </div>
     </nav>
 
