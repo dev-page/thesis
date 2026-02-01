@@ -23,14 +23,18 @@ const passwordVisible = ref(false)
 const confirmPasswordVisible = ref(false)
 const showTerms = ref(false)
 
+const otpInput = ref('')
+const showOtpForm = ref(false)
+
 onMounted(() => {
   if (!isLoading.value && user.value) {
     router.push('/')
   }
 })
 
-const togglePassword = () => passwordVisible.value = !passwordVisible.value
-const toggleConfirmPassword = () => confirmPasswordVisible.value = !confirmPasswordVisible.value
+const togglePassword = () => (passwordVisible.value = !passwordVisible.value)
+const toggleConfirmPassword = () => (confirmPasswordVisible.value = !confirmPasswordVisible.value)
+const toggleTerms = () => (showTerms.value = !showTerms.value)
 
 const generateOtp = () => {
   return Math.floor(100000 + Math.random() * 900000).toString()
@@ -50,6 +54,11 @@ const register = async () => {
 
   if (!firstName.value || !lastName.value || !email.value) {
     toast.error('Please fill all required fields')
+    return
+  }
+
+  if(!showTerms.value) {
+    toast.error('You must agree to the terms and conditions')
     return
   }
 
@@ -81,13 +90,8 @@ const register = async () => {
       expiresAt: Date.now() + 5 * 60 * 1000,
     })
 
-    localStorage.setItem('firstName', firstName.value)
-    localStorage.setItem('lastName', lastName.value)
-    localStorage.setItem('email', email.value)
-    localStorage.setItem('birthDate', birthDate.value)
-
     toast.success('Account created! Please check your email for OTP verification.')
-    setTimeout(() => router.push('/verify-otp'), 3000)
+    showOtpForm.value = true
   } catch (err) {
     console.error(err)
     const friendlyMessages = {
@@ -96,6 +100,59 @@ const register = async () => {
       'auth/weak-password': 'Password is too weak.',
     }
     toast.error(friendlyMessages[err.code] || 'Failed to register, please try again')
+  } finally {
+    isSubmitting.value = false
+  }
+}
+
+const veryifyOtp = async () => {
+  if (!otpInput.value) {
+    toast.error('Please enter the OTP sent to your email')
+    return
+  }
+
+  isSubmitting.value = true
+
+  try {
+    const uid = auth.currentUser?.uid
+    if (!uid) {
+      toast.error('No user found. Please register again.')
+      return
+    }
+
+    const otpDoc = await getDoc(doc(db, 'otp', uid))
+    if (!otpDoc.exists()) {
+      toast.error('OTP not found. Please request a new one.')
+      return
+    }
+
+    const { code, expiresAt } = otpDoc.data()
+    if (Date.now() > expiresAt) {
+      toast.error('OTP has expired. Please request a new one.')
+      await deleteDoc(doc(db, 'otp', uid))
+      return
+    }
+
+    if (otpInput.value !== code) {
+      toast.error('Invalid OTP. Please try again.')
+      return
+    }
+
+    await setDoc(doc(db, 'users', uid), {
+      firstName: firstName.value,
+      lastName: lastName.value,
+      email: email.value,
+      birthDate: birthDate.value ? new Date(birthDate.value) : null,
+      createdAt: serverTimestamp(),
+    })
+
+    await deleteDoc(doc(db, 'otp', uid))
+
+    toast.success('Email verified and registration complete!')
+    router.push('/login')
+  } catch (err) {
+    console.error(err)
+    toast.error('Failed to verify OTP, please try again')
   } finally {
     isSubmitting.value = false
   }
