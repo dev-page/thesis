@@ -2,7 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { auth, db } from '@/config/firebaseConfig'
-import { createUserWithEmailAndPassword } from 'firebase/auth'
+import { createUserWithEmailAndPassword, sendEmailVerification } from 'firebase/auth'
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore'
 import { toast } from 'vue3-toastify'
 import { useAuth } from '@/composables/useAuth'
@@ -32,6 +32,10 @@ onMounted(() => {
 const togglePassword = () => passwordVisible.value = !passwordVisible.value
 const toggleConfirmPassword = () => confirmPasswordVisible.value = !confirmPasswordVisible.value
 
+const generateOtp = () => {
+  return Math.floor(100000 + Math.random() * 900000).toString()
+}
+
 const register = async () => {
   if (password.value !== confirmPassword.value) {
     toast.error('Passwords do not match')
@@ -49,11 +53,33 @@ const register = async () => {
     return
   }
 
+  const birth = new Date(birthDate.value)
+  const today = new Date()
+  let age = today.getFullYear() - birth.getFullYear()
+  const m = today.getMonth() - birth.getMonth()
+  if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) {
+    age--
+  }
+
+  if (age < 18) {
+    toast.error('You must be at least 18 years old to register')
+    return
+  }
+
   isSubmitting.value = true
 
   try {
     const userCredentials = await createUserWithEmailAndPassword(auth, email.value, password.value)
     const uid = userCredentials.user.uid
+
+    await sendEmailVerification(userCredentials.user)
+
+    const otp = generateOtp()
+    await setDoc(doc(db, 'otps', uid), {
+      code: otp,
+      createdAt: serverTimestamp(),
+      expiresAt: Date.now() + 5 * 60 * 1000,
+    })
 
     await setDoc(doc(db, 'users', uid), {
       firstName: firstName.value,
