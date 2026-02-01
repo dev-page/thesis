@@ -22,6 +22,7 @@ const isSubmitting = ref(false)
 const passwordVisible = ref(false)
 const confirmPasswordVisible = ref(false)
 const showTerms = ref(false)
+const termsAccepted = ref(false)
 
 const otpInput = ref('')
 const showOtpForm = ref(false)
@@ -34,7 +35,6 @@ onMounted(() => {
 
 const togglePassword = () => (passwordVisible.value = !passwordVisible.value)
 const toggleConfirmPassword = () => (confirmPasswordVisible.value = !confirmPasswordVisible.value)
-const toggleTerms = () => (showTerms.value = !showTerms.value)
 
 const generateOtp = () => {
   return Math.floor(100000 + Math.random() * 900000).toString()
@@ -57,7 +57,7 @@ const register = async () => {
     return
   }
 
-  if(!showTerms.value) {
+  if(!termsAccepted.value) {
     toast.error('You must agree to the terms and conditions')
     return
   }
@@ -105,7 +105,7 @@ const register = async () => {
   }
 }
 
-const veryifyOtp = async () => {
+const verifyOtp = async () => {
   if (!otpInput.value) {
     toast.error('Please enter the OTP sent to your email')
     return
@@ -324,7 +324,7 @@ const veryifyOtp = async () => {
           </div>
 
           <label class="flex items-center gap-2 text-charcoal-600 text-sm">
-            <input type="checkbox" required class="accent-gold-700" />
+            <input type="checkbox" v-model="termsAccepted" required class="accent-gold-700" />
             I agree to the <a href="#" @click.prevent="showTerms = true" class="text-gold-700 hover:underline">terms and conditions</a>
           </label>
 
@@ -344,23 +344,40 @@ const veryifyOtp = async () => {
 
         </form>
 
-        <form v-else @submit.prevent="veryifyOtp" class="space-y-4">
+        <form v-else @submit.prevent="verifyOtp" class="space-y-6 w-full max-w-[480px]">
           <div class="relative">
-            <input v-model="otpInput" maxlength="6" placeholder="Enter OTP" class="peer input h-16 pt-4 pb-2 px-3" />
-            <label class="label">OTP Code</label>
+            <input
+              v-model="otpInput"
+              maxlength="6"
+              type="text"
+              placeholder=" "
+              required
+              class="peer input h-14 pt-5 pb-2 px-4 tracking-widest text-lg font-montserrat rounded-xl border border-gray-300 focus:border-gold-700 focus:ring-1 focus:ring-gold-700 transition w-full"
+            />
+            <label
+              class="absolute left-4 top-3 text-xs text-charcoal-500 transition-all duration-200
+                    peer-placeholder-shown:top-1/2 peer-placeholder-shown:-translate-y-1/2 peer-placeholder-shown:text-sm peer-placeholder-shown:text-charcoal-400
+                    peer-focus:top-3 peer-focus:-translate-y-0 peer-focus:text-xs peer-focus:text-gold-700
+                    pointer-events-none font-montserrat"
+            >
+              Enter OTP
+            </label>
           </div>
 
-          <button type="submit" :disabled="isSubmitting">
-            class ="w-full py-3 rounded-xl bg-gold-700 text-white font-semibold text-base
-                         hover:bg-gold-800 hover:scale-[1.02] active:scale-[0.98] transition disabled:opacity-60 disabled:cursor-not-allowed">
+          <button
+            type="submit"
+            :disabled="isSubmitting"
+            class="w-full py-3 rounded-xl bg-gold-700 text-white font-semibold text-base
+                  hover:bg-gold-800 hover:scale-[1.02] active:scale-[0.98] transition disabled:opacity-60 disabled:cursor-not-allowed"
+          >
             {{ isSubmitting ? 'Verifying...' : 'Verify OTP' }}
           </button>
         </form>
-      </div>
 
       </div>
 
-      <!-- Terms and Conditions Modal -->
+      </div>
+
       <Modal
         :isOpen="showTerms"
         :title="'Terms and Conditions'"
