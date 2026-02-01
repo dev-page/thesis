@@ -22,6 +22,7 @@ const isSubmitting = ref(false)
 const passwordVisible = ref(false)
 const confirmPasswordVisible = ref(false)
 const showTerms = ref(false)
+const termsAccepted = ref(false)
 
 const otpInput = ref('')
 const showOtpForm = ref(false)
@@ -57,7 +58,7 @@ const register = async () => {
     return
   }
 
-  if(!showTerms.value) {
+  if(!termsAccepted.value) {
     toast.error('You must agree to the terms and conditions')
     return
   }
@@ -324,7 +325,7 @@ const veryifyOtp = async () => {
           </div>
 
           <label class="flex items-center gap-2 text-charcoal-600 text-sm">
-            <input type="checkbox" required class="accent-gold-700" />
+            <input type="checkbox" v-model="termsAccepted" required class="accent-gold-700" />
             I agree to the <a href="#" @click.prevent="showTerms = true" class="text-gold-700 hover:underline">terms and conditions</a>
           </label>
 
