@@ -1,6 +1,5 @@
 <template>
-  <div class="min-h-screen bg-gradient-to-br from-gold-100 via-cream-200 to-rose-100 flex flex-col items-center py-16 px-4">
-+
+  <div class="flex flex-col items-center py-8 px-4">
     <div class="text-center mb-12">
       <h1 class="text-3xl sm:text-4xl font-playfair text-gold-700 mb-4">Choose Your Plan</h1>
       <p class="text-gray-700 max-w-xl mx-auto">
@@ -16,7 +15,7 @@
       >
         <h3 class="text-lg font-semibold text-gold-700 mb-2">Free Trial</h3>
         <p class="text-3xl font-bold mb-4">₱0</p>
-        <p class="text-gray-600">Try all features for 7 days. No credit card required.</p>
+        <p class="text-gray-600">Try all features for 14 days. No credit card required.</p>
       </div>
 
       <div

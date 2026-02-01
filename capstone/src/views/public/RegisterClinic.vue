@@ -109,9 +109,9 @@ const register = async () => {
         <img src="@/assets/bg.jpg" alt="AesthetiCare" class="absolute inset-0 w-full h-full object-cover" />
         <div class="absolute inset-0 bg-gradient-to-br from-gold-900/70 via-charcoal-900/60 to-rose-900/60"></div>
         <div class="relative z-10 h-full flex flex-col justify-end p-10">
-          <h2 class="text-2xl font-playfair text-gold-300 mb-2">Create Your Account</h2>
+          <h2 class="text-2xl font-playfair text-gold-300 mb-2">Register Your Clinic & Create Your Account</h2>
           <p class="text-white/80 max-w-sm">
-            Join AesthetiCare today — access your profile, bookings, and more securely.
+            Get started with AesthetiCare today! Set up your clinic profile and your personal account to manage bookings, services, and more — all in one place.
           </p>
         </div>
       </div>

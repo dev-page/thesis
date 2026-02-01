@@ -15,8 +15,6 @@ const isRememberMe = ref(false)
 const isSubmitting = ref(false)
 const passwordVisible = ref(false)
 
-const goBack = () => history.back()
-
 onMounted(() => {
     if (!isLoading.value && user.value) {
         router.replace('/')

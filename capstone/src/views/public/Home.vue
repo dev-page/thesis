@@ -52,12 +52,12 @@
           >
             Login
           </router-link>
-          <router-link
-            to="/clinic/register"
+          <button
+            @click="showSubscriptionPopup = true"
             class="px-3 sm:px-4 py-1.5 sm:py-2 rounded-full bg-gold-700 text-white text-xs sm:text-sm tracking-widest uppercase hover:bg-gold-800 transition"
           >
             Free Trial
-          </router-link>
+          </button>
         </div>
       </div>
     </nav>
@@ -78,12 +78,12 @@
             Designed specifically for aesthetic clinics and med spas to manage patients, treatments, staff, and growth — all in one elegant platform.
           </p>
           <div class="flex flex-col sm:flex-row gap-3 sm:gap-4 flex-wrap">
-            <router-link to="/clinic/register" class="bg-gold-700 text-white px-5 sm:px-10 py-2 sm:py-4 rounded-full text-xs sm:text-sm tracking-widest uppercase hover:bg-gold-800 transition w-full sm:w-auto text-center">
+            <button @click="showSubscriptionPopup = true" class="bg-gold-700 text-white px-5 sm:px-10 py-2 sm:py-4 rounded-full text-xs sm:text-sm tracking-widest uppercase hover:bg-gold-800 transition w-full sm:w-auto text-center">
               Free Trial
-            </router-link>
-            <button class="px-5 sm:px-10 py-2 sm:py-4 rounded-full border border-gold-700 text-gold-700 text-xs sm:text-sm tracking-widest uppercase hover:bg-gold-700 hover:text-white transition w-full sm:w-auto text-center">
-              View Centers
             </button>
+            <router-link to="/centers" class="px-5 sm:px-10 py-2 sm:py-4 rounded-full border border-gold-700 text-gold-700 text-xs sm:text-sm tracking-widest uppercase hover:bg-gold-700 hover:text-white transition w-full sm:w-auto text-center">
+              View Centers
+            </router-link>
           </div>
         </div>
 
@@ -94,7 +94,6 @@
       </div>
     </section>
 
-    <!-- PURE PARALLAX IMAGE -->
     <section
       class="h-[50vh] sm:h-[60vh] md:h-[70vh] bg-fixed bg-center bg-cover bg-gradient-to-br from-gold-100 via-cream-200 to-gold-300"
       style="background-image: url('../img/bg.jpg');">
