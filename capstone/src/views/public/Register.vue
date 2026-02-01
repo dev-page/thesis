@@ -35,7 +35,6 @@ onMounted(() => {
 
 const togglePassword = () => (passwordVisible.value = !passwordVisible.value)
 const toggleConfirmPassword = () => (confirmPasswordVisible.value = !confirmPasswordVisible.value)
-const toggleTerms = () => (showTerms.value = !showTerms.value)
 
 const generateOtp = () => {
   return Math.floor(100000 + Math.random() * 900000).toString()
@@ -106,7 +105,7 @@ const register = async () => {
   }
 }
 
-const veryifyOtp = async () => {
+const verifyOtp = async () => {
   if (!otpInput.value) {
     toast.error('Please enter the OTP sent to your email')
     return
@@ -345,7 +344,7 @@ const veryifyOtp = async () => {
 
         </form>
 
-        <form v-else @submit.prevent="veryifyOtp" class="space-y-4">
+        <form v-else @submit.prevent="verifyOtp" class="space-y-4">
           <div class="relative">
             <input v-model="otpInput" maxlength="6" placeholder="Enter OTP" class="peer input h-16 pt-4 pb-2 px-3" />
             <label class="label">OTP Code</label>
