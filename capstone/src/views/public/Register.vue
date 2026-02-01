@@ -344,7 +344,11 @@ const verifyOtp = async () => {
 
         </form>
 
+<<<<<<< HEAD
         <form v-else @submit.prevent="verifyOtp" class="space-y-6 w-full max-w-[480px]">
+=======
+        <form v-else @submit.prevent="verifyOtp" class="space-y-4">
+>>>>>>> 33355ab13eb8cc243e637dfe6d21e72e7569f5dd
           <div class="relative">
             <input v-model="otpInput" maxlength="6" type="text" placeholder=" " required
               class="peer input h-14 pt-5 pb-2 px-4 tracking-widest text-lg font-montserrat rounded-xl border border-gray-300 focus:border-gold-700 focus:ring-1 focus:ring-gold-700 transition w-full"
