@@ -198,7 +198,7 @@ const veryifyOtp = async () => {
       </div>
 
       <div class="flex items-center justify-center px-4 pt-12 pb-12">
-        <form class="space-y-4 w-full max-w-[480px]" @submit.prevent="register">
+        <form v-if="!showOtpForm" class="space-y-4 w-full max-w-[480px]" @submit.prevent="register">
 
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div class="relative">
@@ -342,6 +342,19 @@ const veryifyOtp = async () => {
             </router-link>
           </div>
 
+        </form>
+
+        <form v-else @submit.prevent="veryifyOtp" class="space-y-4">
+          <div class="relative">
+            <input v-model="otpInput" maxlength="6" placeholder="Enter OTP" class="peer input h-16 pt-4 pb-2 px-3" />
+            <label class="label">OTP Code</label>
+          </div>
+
+          <button type="submit" :disabled="isSubmitting">
+            class ="w-full py-3 rounded-xl bg-gold-700 text-white font-semibold text-base
+                         hover:bg-gold-800 hover:scale-[1.02] active:scale-[0.98] transition disabled:opacity-60 disabled:cursor-not-allowed">
+            {{ isSubmitting ? 'Verifying...' : 'Verify OTP' }}
+          </button>
         </form>
       </div>
 
