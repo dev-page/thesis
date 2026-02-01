@@ -169,8 +169,8 @@
         <p class="text-white/80 mb-6 sm:mb-8 text-sm sm:text-base">
           Join modern aesthetic centers using intelligent systems to scale with confidence.
         </p>
-        <button class="bg-gold-700 text-white font-semibold px-6 sm:px-8 py-3 sm:py-4 rounded-xl hover:bg-gold-800 transition text-sm sm:text-base">
-          Request Demo
+        <button @click="showSubscriptionPopup = true" class="bg-gold-700 text-white font-semibold px-6 sm:px-8 py-3 sm:py-4 rounded-xl hover:bg-gold-800 transition text-sm sm:text-base">
+          Try 14-Day Free Trial
         </button>
       </div>
 
@@ -182,7 +182,6 @@
     <!-- Subscription Popup Modal -->
     <Modal
       :isOpen="showSubscriptionPopup"
-      :title="'Choose Your Plan'"
       @close="showSubscriptionPopup = false"
       :showConfirm="false"
     >
@@ -262,7 +261,7 @@ export default {
       capabilityRows.value.forEach((row) => observer.observe(row));
     });
 
-    return { capabilityRows, capabilities };
+    return { capabilityRows, capabilities, showSubscriptionPopup };
   },
 };
 </script>

@@ -22,6 +22,7 @@ const isSubmitting = ref(false)
 const passwordVisible = ref(false)
 const confirmPasswordVisible = ref(false)
 const showTerms = ref(false)
+const agreedToTerms = ref(false)
 
 onMounted(() => {
   if (!isLoading.value && user.value) {
@@ -239,7 +240,7 @@ const register = async () => {
         </div>
 
         <label class="flex items-center gap-2 text-charcoal-600 text-sm">
-            <input type="checkbox" required class="accent-gold-700" />
+            <input v-model="agreedToTerms" type="checkbox" required class="accent-gold-700" />
             I agree to the <a href="#" @click.prevent="showTerms = true" class="text-gold-700 hover:underline">terms and conditions</a>
         </label>
 

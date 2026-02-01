@@ -210,7 +210,6 @@ const handleFacebookLogin = async () => {
               <a href="#" class="text-gold-700 hover:underline text-xs">Forgot password?</a>
             </div>
 
-            <!-- SOCIAL LOGINS -->
             <div class="space-y-2">
               <button
                 @click="handleGoogleLogin"
