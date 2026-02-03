@@ -8,6 +8,7 @@ import { toast } from 'vue3-toastify'
 import { useAuth } from '@/composables/useAuth'
 import Modal from '@/components/common/Modal.vue'
 import Terms from '@/components/common/Terms.vue'
+import { use } from 'react'
 
 const router = useRouter()
 const { user, isLoading } = useAuth()
@@ -18,14 +19,12 @@ const email = ref('')
 const password = ref('')
 const confirmPassword = ref('')
 const birthDate = ref('')
+
 const isSubmitting = ref(false)
 const passwordVisible = ref(false)
 const confirmPasswordVisible = ref(false)
 const showTerms = ref(false)
 const termsAccepted = ref(false)
-
-const otpInput = ref('')
-const showOtpForm = ref(false)
 
 onMounted(() => {
   if (!isLoading.value && user.value) {
@@ -35,10 +34,6 @@ onMounted(() => {
 
 const togglePassword = () => (passwordVisible.value = !passwordVisible.value)
 const toggleConfirmPassword = () => (confirmPasswordVisible.value = !confirmPasswordVisible.value)
-
-const generateOtp = () => {
-  return Math.floor(100000 + Math.random() * 900000).toString()
-}
 
 const register = async () => {
   if (password.value !== confirmPassword.value) {
@@ -52,7 +47,7 @@ const register = async () => {
     return
   }
 
-  if (!firstName.value || !lastName.value || !email.value) {
+  if (!firstName.value || !lastName.value || !email.value || !password.value || !confirmPassword.value ) {
     toast.error('Please fill all required fields')
     return
   }
@@ -83,15 +78,18 @@ const register = async () => {
 
     await sendEmailVerification(userCredentials.user)
 
-    const otp = generateOtp()
-    await setDoc(doc(db, 'otp', uid), {
-      code: otp,
+    await setDoc(doc(db, 'users', uid), {
+      firstName: firstName.value,
+      lastName: lastName.value,
+      email: email.value,
+      birthDate: birthDate.value ? new Date(birthDate.value) : null,
+      role: 'customer',
+      status: 'pending',
       createdAt: serverTimestamp(),
-      expiresAt: Date.now() + 5 * 60 * 1000,
     })
 
-    toast.success('Account created! Please check your email for OTP verification.')
-    showOtpForm.value = true
+    toast.success('Account created! Please check your email for verification.')
+    router.push('/login')
   } catch (err) {
     console.error(err)
     const friendlyMessages = {
@@ -100,59 +98,6 @@ const register = async () => {
       'auth/weak-password': 'Password is too weak.',
     }
     toast.error(friendlyMessages[err.code] || 'Failed to register, please try again')
-  } finally {
-    isSubmitting.value = false
-  }
-}
-
-const verifyOtp = async () => {
-  if (!otpInput.value) {
-    toast.error('Please enter the OTP sent to your email')
-    return
-  }
-
-  isSubmitting.value = true
-
-  try {
-    const uid = auth.currentUser?.uid
-    if (!uid) {
-      toast.error('No user found. Please register again.')
-      return
-    }
-
-    const otpDoc = await getDoc(doc(db, 'otp', uid))
-    if (!otpDoc.exists()) {
-      toast.error('OTP not found. Please request a new one.')
-      return
-    }
-
-    const { code, expiresAt } = otpDoc.data()
-    if (Date.now() > expiresAt) {
-      toast.error('OTP has expired. Please request a new one.')
-      await deleteDoc(doc(db, 'otp', uid))
-      return
-    }
-
-    if (otpInput.value !== code) {
-      toast.error('Invalid OTP. Please try again.')
-      return
-    }
-
-    await setDoc(doc(db, 'users', uid), {
-      firstName: firstName.value,
-      lastName: lastName.value,
-      email: email.value,
-      birthDate: birthDate.value ? new Date(birthDate.value) : null,
-      createdAt: serverTimestamp(),
-    })
-
-    await deleteDoc(doc(db, 'otp', uid))
-
-    toast.success('Email verified and registration complete!')
-    router.push('/login')
-  } catch (err) {
-    console.error(err)
-    toast.error('Failed to verify OTP, please try again')
   } finally {
     isSubmitting.value = false
   }
@@ -198,7 +143,7 @@ const verifyOtp = async () => {
       </div>
 
       <div class="flex items-center justify-center px-4 pt-12 pb-12">
-        <form v-if="!showOtpForm" class="space-y-4 w-full max-w-[480px]" @submit.prevent="register">
+        <form class="space-y-4 w-full max-w-[480px]" @submit.prevent="register">
 
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div class="relative">
@@ -343,32 +288,6 @@ const verifyOtp = async () => {
           </div>
 
         </form>
-
-        <form v-else @submit.prevent="verifyOtp" class="space-y-6 w-full max-w-[480px]">
-          <div class="relative">
-            <input v-model="otpInput" maxlength="6" type="text" placeholder=" " required
-              class="peer input h-14 pt-5 pb-2 px-4 tracking-widest text-lg font-montserrat rounded-xl border border-gray-300 focus:border-gold-700 focus:ring-1 focus:ring-gold-700 transition w-full"
-            />
-            <label
-              class="absolute left-4 top-3 text-xs text-charcoal-500 transition-all duration-200
-                    peer-placeholder-shown:top-1/2 peer-placeholder-shown:-translate-y-1/2 peer-placeholder-shown:text-sm peer-placeholder-shown:text-charcoal-400
-                    peer-focus:top-3 peer-focus:-translate-y-0 peer-focus:text-xs peer-focus:text-gold-700
-                    pointer-events-none font-montserrat"
-            >
-              Enter OTP
-            </label>
-          </div>
-
-          <button
-            type="submit"
-            :disabled="isSubmitting"
-            class="w-full py-3 rounded-xl bg-gold-700 text-white font-semibold text-base
-                  hover:bg-gold-800 hover:scale-[1.02] active:scale-[0.98] transition disabled:opacity-60 disabled:cursor-not-allowed"
-          >
-            {{ isSubmitting ? 'Verifying...' : 'Verify OTP' }}
-          </button>
-        </form>
-
       </div>
 
       </div>
