@@ -24,11 +24,11 @@
             </a>
           </li>
           <li>
-            <a class="relative text-charcoal-700 hover:text-gold-700 hover:font-bold transition-all duration-300
+            <router-link to="/subscription" class="relative text-charcoal-700 hover:text-gold-700 hover:font-bold transition-all duration-300
                       before:absolute before:left-0 before:bottom-[-4px] before:w-0 before:h-[2px] before:bg-gold-700
                       before:transition-all before:duration-300 hover:before:w-full">
               Pricing
-            </a>
+            </router-link>
           </li>
           <li>
             <router-link to="/centers"
@@ -174,16 +174,15 @@
         </button>
       </div>
 
-      <!-- Ambient parallax blobs -->
       <div class="absolute top-0 left-0 w-48 sm:w-64 h-48 sm:h-64 bg-gold-400/20 rounded-full blur-[60px] sm:blur-[80px] animate-parallaxSlow"></div>
       <div class="absolute bottom-0 right-0 w-56 sm:w-72 h-56 sm:h-72 bg-lavender-500/20 rounded-full blur-[90px] sm:blur-[120px] animate-parallaxSlow"></div>
     </section>
 
-    <!-- Subscription Popup Modal -->
     <Modal
       :isOpen="showSubscriptionPopup"
       @close="showSubscriptionPopup = false"
       :showConfirm="false"
+      panelClass="bg-white"
     >
       <SubscriptionPopup @close="showSubscriptionPopup = false" />
     </Modal>
@@ -196,6 +195,7 @@ import { onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
 import Modal from "@/components/common/Modal.vue";
 import SubscriptionPopup from "@/components/common/SubscriptionPopup.vue";
+import placeholder from '@/assets/placeholder.svg'
 
 export default {
   name: "HomePage",
@@ -211,32 +211,32 @@ export default {
       {
         title: "Appointments & Scheduling",
         description: "Streamline bookings with a visual calendar, staff availability management, and automated reminders.",
-        image: "https://via.placeholder.com/600x400.png?text=Appointments+Image",
+        image: placeholder,
       },
       {
         title: "Patient Treatment Records",
         description: "Maintain detailed treatment history, session notes, before-and-after photos, and progress tracking.",
-        image: "https://via.placeholder.com/600x400.png?text=Patient+Records+Image",
+        image: placeholder,
       },
       {
         title: "Appointments & Scheduling",
         description: "Streamline bookings with a visual calendar, staff availability management, and automated reminders.",
-        image: "https://via.placeholder.com/600x400.png?text=Appointments+Image",
+        image: placeholder,
       },
       {
         title: "Patient Treatment Records",
         description: "Maintain detailed treatment history, session notes, before-and-after photos, and progress tracking.",
-        image: "https://via.placeholder.com/600x400.png?text=Patient+Records+Image",
+        image: placeholder,
       },
       {
         title: "Appointments & Scheduling",
         description: "Streamline bookings with a visual calendar, staff availability management, and automated reminders.",
-        image: "https://via.placeholder.com/600x400.png?text=Appointments+Image",
+        image: placeholder,
       },
       {
         title: "Patient Treatment Records",
         description: "Maintain detailed treatment history, session notes, before-and-after photos, and progress tracking.",
-        image: "https://via.placeholder.com/600x400.png?text=Patient+Records+Image",
+        image: placeholder,
       },
     ];
 
