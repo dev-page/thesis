@@ -354,7 +354,7 @@ const register = async () => {
     </div>
 
       <!-- Terms and Conditions Modal -->
-      <Modal
+      <Modal panelClass="bg-white"
         :isOpen="showTerms"
         :title="'Terms and Conditions'"
         @close="showTerms = false"
