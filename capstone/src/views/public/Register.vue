@@ -1,16 +1,14 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { auth, db } from '@/config/firebaseConfig'
-import { createUserWithEmailAndPassword, sendEmailVerification } from 'firebase/auth'
-import { doc, setDoc, serverTimestamp } from 'firebase/firestore'
+import { createUserWithEmailAndPassword, sendEmailVerification, reload } from 'firebase/auth'
+import { doc, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore'
 import { toast } from 'vue3-toastify'
-import { useAuth } from '@/composables/useAuth'
 import Modal from '@/components/common/Modal.vue'
 import Terms from '@/components/common/Terms.vue'
 
 const router = useRouter()
-const { user, isLoading } = useAuth()
 
 const firstName = ref('')
 const lastName = ref('')
@@ -25,14 +23,18 @@ const confirmPasswordVisible = ref(false)
 const showTerms = ref(false)
 const termsAccepted = ref(false)
 
-onMounted(() => {
-  if (!isLoading.value && user.value) {
-    router.push('/')
-  }
-})
-
 const togglePassword = () => (passwordVisible.value = !passwordVisible.value)
 const toggleConfirmPassword = () => (confirmPasswordVisible.value = !confirmPasswordVisible.value)
+
+const clearForm = () => {
+  firstName.value = ''
+  lastName.value = ''
+  email.value = ''
+  password.value = ''
+  confirmPassword.value = ''
+  birthDate.value = ''
+  termsAccepted.value = false
+}
 
 const register = async () => {
   if (password.value !== confirmPassword.value) {
@@ -75,8 +77,6 @@ const register = async () => {
     const userCredentials = await createUserWithEmailAndPassword(auth, email.value, password.value)
     const uid = userCredentials.user.uid
 
-    await sendEmailVerification(userCredentials.user)
-
     await setDoc(doc(db, 'users', uid), {
       firstName: firstName.value,
       lastName: lastName.value,
@@ -84,11 +84,41 @@ const register = async () => {
       birthDate: birthDate.value ? new Date(birthDate.value) : null,
       role: 'customer',
       status: 'pending',
-      createdAt: serverTimestamp(),
+       createdAt: serverTimestamp(),
     })
 
-    toast.success('Account created! Please check your email for verification.')
-    router.push('/login')
+    toast.success('Please check your email for verification.')
+    console.log('Toast fired, verification email requested')
+    clearForm()
+
+    try {
+      await sendEmailVerification(userCredentials.user, {
+        url: `${window.location.origin}/login`,
+      })
+    } catch (emailErr) {
+      console.error('Verification email error:', emailErr)
+      toast.error('Failed to send verification email, but your account was created.')
+    }
+
+    const unsubscribe = auth.onAuthStateChanged(async (currentUser) => {
+      if (currentUser) {
+        try {
+          await reload(currentUser)
+          console.log('Email berified?:', currentUser.emailVerified)
+
+          if (currentUser.emailVerified) {
+            await updateDoc(doc(db, 'users', currentUser.uid), {
+              status: 'active',
+            })
+            toast.success('Email verified! You can now log in.')
+            router.push('/login')
+            unsubscribe()
+          }
+        } catch (listenerErr) {
+          console.error('Listener error:', listenerErr)
+        }
+      }
+    })
   } catch (err) {
     console.error(err)
     const friendlyMessages = {
