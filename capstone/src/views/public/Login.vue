@@ -1,8 +1,9 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { auth } from '@/config/firebaseConfig'
-import { signInWithEmailAndPassword, setPersistence, browserSessionPersistence, browserLocalPersistence, signInWithPopup, GoogleAuthProvider, FacebookAuthProvider } from 'firebase/auth'
+import { auth, db } from '@/config/firebaseConfig'
+import { signInWithEmailAndPassword, setPersistence, browserSessionPersistence, browserLocalPersistence, signInWithPopup, GoogleAuthProvider, FacebookAuthProvider, sendPasswordResetEmail } from 'firebase/auth'
+import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore'
 import { toast } from 'vue3-toastify'
 import { useAuth } from '@/composables/useAuth'
 
@@ -23,9 +24,7 @@ onMounted(() => {
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
-const togglePassword = () => {
-    passwordVisible.value = !passwordVisible.value
-}
+const togglePassword = () => { passwordVisible.value = !passwordVisible.value }
 
 const handleLogin = async () => {
     if (!email.value || !password.value) {
@@ -51,24 +50,95 @@ const handleLogin = async () => {
             isRememberMe.value ? browserLocalPersistence : browserSessionPersistence
         )
 
-        await signInWithEmailAndPassword(auth, email.value.trim(), password.value)
+        const userCredentials = await signInWithEmailAndPassword(auth, email.value.trim(), password.value)
+        await userCredentials.user.reload()
 
-        toast.success('Redirecting you to Dashboard')
+        if (!userCredentials.user.emailVerified) {
+            toast.error('Please verify your email before logging in.')
+            return
+        }
+
+        const userRef = doc(db, 'users', userCredentials.user.uid)
+        await setDoc(userRef, { status: 'active' }, { merge: true })
+
+        const userSnap = await getDoc(userRef)
+        if (userSnap.exists()) {
+          const role = userSnap.data().role
+          if (role === 'owner') {
+            toast.success('Login successful! Redirecting to Owner Dashboard')
+            router.push('/owner/dashboard')
+          } else {
+            toast.success('Login successful! Redirecting to Customer Dashboard')
+            //router.push('')
+          }
+        }
+
+        toast.success('Login successful! Redirecting to Dashboard')
         //router.push('')
     } catch (err) {
         console.error(err)
-        toast.error('Invalid email or password.')
+        const friendlyMessages = {
+            'auth/user-not-found': 'No account found with this email.',
+            'auth/too-many-requests': 'Too many failed login attempts. Please try again later.'
+        }
+        toast .error(friendlyMessages[err.code] || 'Invalid email or password.')
     } finally {
         isSubmitting.value = false
+    }
+}
+
+const handleForgotPassword = async () => {
+    if (!email.value) {
+        toast.error('Please enter your email address to reset your password.')
+        return
+    }
+
+    if (!EMAIL_REGEX.test(email.value)) {
+        toast.error('Please enter a valid email address.')
+        return
+    }
+
+    try {
+        await sendPasswordResetEmail(auth, email.value.trim())
+        toast.success('Password reset email sent! Please check your inbox.')
+    } catch (err) {
+        console.error(err)
+        const friendlyMessages = {
+            'auth/user-not-found': 'No account found with this email.',
+            'auth/too-many-requests': 'Too many requests. Please try again later.'
+        }
+        toast.error(friendlyMessages[err.code] || 'Failed to send password reset email.')
     }
 }
 
 const handleGoogleLogin = async () => {
     try {
         const provider = new GoogleAuthProvider()
-        await signInWithPopup(auth, provider)
-        toast.success('Logged in with Google!')
-        //router.push('')
+        const userCredentials = await signInWithPopup(auth, provider)
+        await userCredentials.user.reload()
+
+        const userRef = doc(db, 'users', userCredentials.user.uid)
+        const userSnap = await getDoc(userRef)
+
+        if (!userSnap.exists()) {
+          await setDoc(userRef, {
+            email: userCredentials.user.email,
+            role: 'customer',
+            status : 'active',
+            createdAt: serverTimestamp()
+          })
+        } else {
+          await setDoc(userRef, { status : 'active', }, { merge: true })
+        }
+
+        const role = userSnap.data().role
+        if (role === 'owner') {
+          toast.success('Logged in with Google! Redirecting to Owner Dashboard')
+          router.push('/owner/dashboard')
+        } else {
+          toast.success('Logged in with Google! Redirecting to Customer Dashboard')
+          //router.push('')
+        }
     } catch (err) {
         console.error(err)
         toast.error('Failed to login with Google.')
@@ -78,9 +148,31 @@ const handleGoogleLogin = async () => {
 const handleFacebookLogin = async () => {
     try {
         const provider = new FacebookAuthProvider()
-        await signInWithPopup(auth, provider)
-        toast.success('Logged in with Facebook!')
-        //router.push('')
+        const userCredentials = await signInWithPopup(auth, provider)
+        await userCredentials.user.reload()
+
+        const userRef = doc(db, 'users', userCredentials.user.uid)
+        const userSnap = await getDoc(userRef)
+
+        if (!userSnap.exists()) {
+          await setDoc(userRef, {
+            email: userCredentials.user.email,
+            role: 'customer',
+            status : 'active',
+            createdAt: serverTimestamp()
+          })
+        } else {
+          await setDoc(userRef, { status : 'active', }, { merge: true })
+        }
+
+        const role = userSnap.data().role
+        if (role === 'owner') {
+          toast.success('Logged in with Facebook! Redirecting to Owner Dashboard')
+          router.push('/owner/dashboard')
+        } else {
+          toast.success('Logged in with Facebook! Redirecting to Customer Dashboard')
+          //router.push('')
+        }
     } catch (err) {
         console.error(err)
         toast.error('Failed to login with Facebook.')
