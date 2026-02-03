@@ -2,7 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { auth, db } from '@/config/firebaseConfig'
-import { createUserWithEmailAndPassword } from 'firebase/auth'
+import { createUserWithEmailAndPassword, sendEmailVerification } from 'firebase/auth'
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore'
 import { toast } from 'vue3-toastify'
 import { useAuth } from '@/composables/useAuth'
@@ -14,15 +14,20 @@ const { user, isLoading } = useAuth()
 
 const firstName = ref('')
 const lastName = ref('')
+const birthDate = ref('')
 const email = ref('')
 const password = ref('')
 const confirmPassword = ref('')
-const birthDate = ref('')
+
+const contactNumber = ref('')
+const clinicName = ref('')
+const clinicLocation = ref('')
+
 const isSubmitting = ref(false)
 const passwordVisible = ref(false)
 const confirmPasswordVisible = ref(false)
 const showTerms = ref(false)
-const agreedToTerms = ref(false)
+const termsAccepted = ref(false)
 
 onMounted(() => {
   if (!isLoading.value && user.value) {
@@ -34,6 +39,11 @@ const togglePassword = () => passwordVisible.value = !passwordVisible.value
 const toggleConfirmPassword = () => confirmPasswordVisible.value = !confirmPasswordVisible.value
 
 const register = async () => {
+  if (!termsAccepted.value) {
+    toast.error('You must agree to the terms and conditions')
+    return
+  }
+  
   if (password.value !== confirmPassword.value) {
     toast.error('Passwords do not match')
     return
@@ -45,8 +55,27 @@ const register = async () => {
     return
   }
 
-  if (!firstName.value || !lastName.value || !email.value) {
+  if (!firstName.value || !lastName.value || !email.value || !clinicName.value || !clinicLocation.value || !contactNumber.value || !password.value || !confirmPassword.value  ) {
     toast.error('Please fill all required fields')
+    return
+  }
+
+  const phoneRegex = /^[0-9]{10}$/
+  if (!phoneRegex.test(contactNumber.value)) {
+    toast.error('Contact number must be 10 digits after +63')
+    return
+  }
+
+  const birth = new Date(birthDate.value)
+  const today = new Date()
+  let age = today.getFullYear() - birth.getFullYear()
+  const m = today.getMonth() - birth.getMonth()
+  if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) {
+    age--
+  }
+
+  if (age < 18) {
+    toast.error('You must be at least 18 years old to register')
     return
   }
 
@@ -56,16 +85,29 @@ const register = async () => {
     const userCredentials = await createUserWithEmailAndPassword(auth, email.value, password.value)
     const uid = userCredentials.user.uid
 
-    await setDoc(doc(db, 'users', uid), {
-      firstName: firstName.value,
-      lastName: lastName.value,
-      email: email.value,
-      birthDate: birthDate.value || null,
-      about: 'Hi! I am new here',
+    await sendEmailVerification(userCredentials.user)
+
+    const clinicRef = doc(db, 'clinics', uid)
+    await setDoc(clinicRef, {
+      clinicName: clinicName.value,
+      clinicLocation: clinicLocation.value,
+      contactNumber: contactNumber.value,
+      ownerId: uid,
       createdAt: serverTimestamp(),
     })
 
-    toast.success('Account created successfully! Redirecting to login...')
+    await setDoc(doc(db, 'clinics', uid), {
+      firstName: firstName.value,
+      lastName: lastName.value,
+      birthDate: birthDate.value || null,
+      email: email.value,
+      role: 'owner',
+      clinicId: clinicRef.id,
+      status: 'pending',
+      createdAt: serverTimestamp(),
+    })
+
+    toast.success('Owner and clinic registered! Please check your email for verification.')
     setTimeout(() => router.push('/login'), 3000)
   } catch (err) {
     console.error(err)
@@ -185,6 +227,60 @@ const register = async () => {
         </div>
 
         <div class="relative">
+            <input :type="passwordVisible ? 'text' : 'password'" v-model="password"
+                   required placeholder=" " class="peer input h-16 pt-4 pb-2 px-3" />
+            <label class="absolute left-3 top-3 text-xs text-charcoal-500
+                          transition-all duration-200
+                          peer-placeholder-shown:top-1/2
+                          peer-placeholder-shown:-translate-y-1/2
+                          peer-placeholder-shown:text-sm
+                          peer-placeholder-shown:text-charcoal-400
+                          peer-focus:top-2
+                          peer-focus:translate-y-0
+                          peer-focus:text-xs
+                          peer-focus:text-gold-700">
+              Password
+            </label>
+              <button type="button" @click="togglePassword" class="absolute right-4 top-1/2 -translate-y-1/2 text-rose-500 hover:text-gold-700" tabindex="-1">
+                <svg v-if="!passwordVisible" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                </svg>
+                <svg v-else class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.956 9.956 0 012.1-3.592M6.18 6.18A9.956 9.956 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3l18 18" />
+                </svg>
+              </button>
+          </div>
+
+          <div class="relative">
+            <input :type="confirmPasswordVisible ? 'text' : 'password'" v-model="confirmPassword"
+                   required placeholder=" " class="peer input h-16 pt-4 pb-2 px-3" />
+            <label class="absolute left-3 top-3 text-xs text-charcoal-500
+                          transition-all duration-200
+                          peer-placeholder-shown:top-1/2
+                          peer-placeholder-shown:-translate-y-1/2
+                          peer-placeholder-shown:text-sm
+                          peer-placeholder-shown:text-charcoal-400
+                          peer-focus:top-2
+                          peer-focus:translate-y-0
+                          peer-focus:text-xs
+                          peer-focus:text-gold-700">
+              Confirm Password
+            </label>
+            <button type="button" @click="toggleConfirmPassword" class="absolute right-4 top-1/2 -translate-y-1/2 text-rose-500 hover:text-gold-700" tabindex="-1">
+                <svg v-if="!confirmPasswordVisible" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                </svg>
+                <svg v-else class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.956 9.956 0 012.1-3.592M6.18 6.18A9.956 9.956 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3l18 18" />
+                </svg>
+              </button>
+          </div>
+
+        <div class="relative">
             <input v-model="clinicName" placeholder=" " required class="peer input h-16 pt-4 pb-2 px-3" />
             <label class="absolute left-3 top-3 text-xs text-charcoal-500
                         transition-all duration-200
@@ -240,7 +336,11 @@ const register = async () => {
         </div>
 
         <label class="flex items-center gap-2 text-charcoal-600 text-sm">
+<<<<<<< HEAD
             <input v-model="agreedToTerms" type="checkbox" required class="accent-gold-700" />
+=======
+            <input type="checkbox" v-model="termsAccepted" required class="accent-gold-700" />
+>>>>>>> ec50f54 (ClinicRegister Update)
             I agree to the <a href="#" @click.prevent="showTerms = true" class="text-gold-700 hover:underline">terms and conditions</a>
         </label>
 
