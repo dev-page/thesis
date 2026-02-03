@@ -291,7 +291,7 @@ const register = async () => {
 
       </div>
 
-      <Modal
+      <Modal panelClass="bg-white"
         :isOpen="showTerms"
         :title="'Terms and Conditions'"
         @close="showTerms = false"
