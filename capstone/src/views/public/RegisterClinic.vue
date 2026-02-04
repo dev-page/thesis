@@ -133,7 +133,6 @@ const registerClinic = async () => {
       birthDate: birthDate.value ? new Date(birthDate.value) : null,
       email: email.value,
       role: 'owner',
-      clinicId: clinicRef.id,
       status: 'pending',
       createdAt: serverTimestamp(),
     })
