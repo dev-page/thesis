@@ -3,14 +3,12 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { auth, db } from '@/config/firebaseConfig'
 import { createUserWithEmailAndPassword } from 'firebase/auth'
-import { doc, setDoc, serverTimestamp } from 'firebase/firestore'
+import { doc, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore'
 import { toast } from 'vue3-toastify'
-import { useAuth } from '@/composables/useAuth'
 import Modal from '@/components/common/Modal.vue'
 import Terms from '@/components/common/Terms.vue'
 
 const router = useRouter()
-const { user, isLoading } = useAuth()
 
 const firstName = ref('')
 const lastName = ref('')
@@ -32,17 +30,55 @@ const termsAccepted = ref(false)
 const otpSent = ref(false)
 const otpInput = ref('')
 const generatedOtp = ref('')
-
-onMounted(() => {
-  if (!isLoading.value && user.value) {
-    router.push('/')
-  }
-})
+const userUid = ref('')
 
 const togglePassword = () => passwordVisible.value = !passwordVisible.value
 const toggleConfirmPassword = () => confirmPasswordVisible.value = !confirmPasswordVisible.value
 
-const sendOtp = async () => {
+
+const clearFormFields = () => {
+  firstName.value = ''
+  lastName.value = ''
+  email.value = ''
+  password.value = ''
+  confirmPassword.value = ''
+  birthDate.value = ''
+  contactNumber.value = ''
+  clinicName.value = ''
+  clinicLocation.value = ''
+  termsAccepted.value = false
+}
+
+const resetOtpState = () => {
+  otpSent.value = false
+  otpInput.value = ''
+  generatedOtp.value = ''
+  userUid.value = ''
+}
+
+const generateOtp = () => {
+  return Math.floor(100000 + Math.random() * 900000).toString()
+}
+
+const sendOtpEmail = async (toEmail, otp) => {
+  try {
+    const res = await axios.post('http://localhost:3000/send-otp', {
+      recipient: toEmail,
+      otp: otp,
+    })
+    if (res.data.success) {
+      // OTP sent successfully
+    } else {
+      toast.error('Failed to send OTP email.')
+    }
+  } catch (err) {
+    console.error(err)
+    toast.error('Error sending OTP.')
+    return
+  }
+}
+
+const registerClinic = async () => {
   if (!termsAccepted.value) {
     toast.error('You must agree to the terms and conditions')
     return
@@ -83,32 +119,12 @@ const sendOtp = async () => {
     return
   }
 
-  generatedOtp.value = Math.floor(100000 + Math.random() * 900000).toString()
-  try {
-    await axios.post('http://localhost:3000/send-otp', {
-      recipient: email.value,
-      otp: generatedOtp.value,
-    })
-    toast.info('OTP sent to your email.')
-    otpSent.value = true
-  } catch (err) {
-    console.error(err)
-    toast.error('Error sending OTP.')
-    return
-  }
-
-  const verifyOtpAndRegister = async () => {
-    if (otpInput.value !== generatedOtp.value) {
-      toast.error('Invalid OTP.')
-      return
-    }
-  }
-
   isSubmitting.value = true
 
   try {
     const userCredentials = await createUserWithEmailAndPassword(auth, email.value, password.value)
     const uid = userCredentials.user.uid
+    userUid.value = uid
 
     const clinicRef = doc(db, 'clinics', uid)
     await setDoc(clinicRef, {
@@ -122,7 +138,7 @@ const sendOtp = async () => {
     await setDoc(doc(db, 'clinics', uid), {
       firstName: firstName.value,
       lastName: lastName.value,
-      birthDate: birthDate.value || null,
+      birthDate: birthDate.value ? new Date(birthDate.value) : null,
       email: email.value,
       role: 'owner',
       clinicId: clinicRef.id,
@@ -130,8 +146,12 @@ const sendOtp = async () => {
       createdAt: serverTimestamp(),
     })
 
-    toast.success('Owner and clinic registered! Please check your email for verification.')
-    setTimeout(() => router.push('/login'), 3000)
+    generatedOtp.value = generateOtp()
+    await sendOtpEmail(email.value, generatedOtp.value)
+
+    otpSent.value = true
+    toast.info('OTP sent to your email! Please verify to complete registration.')
+    clearFormFields()
   } catch (err) {
     console.error(err)
     const friendlyMessages = {
@@ -142,6 +162,39 @@ const sendOtp = async () => {
     toast.error(friendlyMessages[err.code] || 'Failed to register, please try again')
   } finally {
     isSubmitting.value = false
+  }
+}
+
+const verifyOtp = async () => {
+  if (!otpInput.value || otpInput.value.trim() === '') {
+    toast.error('Please enter your OTP')
+    return
+  }
+
+  if (otpInput.value === generatedOtp.value) {
+    try {
+      if (!userUid.value) {
+        toast.error('User ID not found. Please register again.')
+        return
+      }
+
+      await updateDoc(doc(db, 'users', userUid.value), {
+        status: 'active',
+      })
+      toast.success('Email verified! You can now log in.')
+      clearFormFields()
+      resetOtpState()
+      otpSent.value = false
+      
+      setTimeout(() => {
+        router.push("/login")
+      }, 3000)
+    } catch (err) {
+      console.error(err)
+      toast.error('Failed to verify OTP, please try again')
+    }
+  } else {
+    toast.error('Invalid OTP, please try again')
   }
 }
 </script>
@@ -183,7 +236,7 @@ const sendOtp = async () => {
       </div>
 
       <div class="flex items-center justify-center px-4 pt-12 pb-12">
-        <form class="space-y-4 w-full max-w-[480px]" @submit.prevent="sendOtp">
+        <form class="space-y-4 w-full max-w-[480px]" @submit.prevent="registerClinic">
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div class="relative">
             <input v-model="firstName" placeholder=" " required class="peer input h-16 pt-4 pb-2 px-3" />
@@ -375,6 +428,28 @@ const sendOtp = async () => {
       </div>
 
     </div>
+
+    <Modal panelClass="bg-white"
+      :isOpen="otpSent"
+      :title="'Veify OTP'"
+      @close="otpSent = false"
+      :showConfirm="false"
+    >
+      <div class="space-y-4">
+        <p class="text-sm text-charcoal-600">
+          We've sent a One-Time Password (OTP) to your email. Please enter it below to verify your account.
+        </p>
+        
+        <input v-model="otpInput" type="text" maxlength="6" placeholder="Enter 6-digit OTP" class="input h-12 px-3 text-center tracking-widest font-semibold" />
+
+        <button @click="verifyOtp" 
+                class="w-full py-3 rounded-xl bg-gold-700 text-white font-semibold text-base
+                      hover:bg-gold-800 hover:scale-[1.02] active:scale-[0.98] transition"
+>
+          Verify OTP
+        </button>
+      </div>
+    </Modal>
 
       <!-- Terms and Conditions Modal -->
       <Modal panelClass="bg-white"
