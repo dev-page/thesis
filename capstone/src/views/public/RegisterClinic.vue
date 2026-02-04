@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { auth, db } from '@/config/firebaseConfig'
 import { createUserWithEmailAndPassword } from 'firebase/auth'
@@ -7,6 +7,7 @@ import { doc, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore'
 import { toast } from 'vue3-toastify'
 import Modal from '@/components/common/Modal.vue'
 import Terms from '@/components/common/Terms.vue'
+import axios from 'axios'
 
 const router = useRouter()
 
@@ -126,16 +127,7 @@ const registerClinic = async () => {
     const uid = userCredentials.user.uid
     userUid.value = uid
 
-    const clinicRef = doc(db, 'clinics', uid)
-    await setDoc(clinicRef, {
-      clinicName: clinicName.value,
-      clinicLocation: clinicLocation.value,
-      contactNumber: contactNumber.value,
-      ownerId: uid,
-      createdAt: serverTimestamp(),
-    })
-
-    await setDoc(doc(db, 'clinics', uid), {
+    await setDoc(doc(db, 'users', uid), {
       firstName: firstName.value,
       lastName: lastName.value,
       birthDate: birthDate.value ? new Date(birthDate.value) : null,
@@ -143,6 +135,14 @@ const registerClinic = async () => {
       role: 'owner',
       clinicId: clinicRef.id,
       status: 'pending',
+      createdAt: serverTimestamp(),
+    })
+
+    await setDoc(doc(db, 'clinics', uid), {
+      clinicName: clinicName.value,
+      clinicLocation: clinicLocation.value,
+      contactNumber: contactNumber.value,
+      ownerId: uid,
       createdAt: serverTimestamp(),
     })
 
