@@ -2,11 +2,12 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { auth, db } from '@/config/firebaseConfig'
-import { createUserWithEmailAndPassword, sendEmailVerification, reload } from 'firebase/auth'
+import { createUserWithEmailAndPassword } from 'firebase/auth'
 import { doc, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore'
 import { toast } from 'vue3-toastify'
 import Modal from '@/components/common/Modal.vue'
 import Terms from '@/components/common/Terms.vue'
+import axios from 'axios'
 
 const router = useRouter()
 
@@ -23,10 +24,15 @@ const confirmPasswordVisible = ref(false)
 const showTerms = ref(false)
 const termsAccepted = ref(false)
 
+const otpSent = ref(false)
+const otpInput = ref('')
+const generatedOtp = ref('')
+const userUid = ref('')
+
 const togglePassword = () => (passwordVisible.value = !passwordVisible.value)
 const toggleConfirmPassword = () => (confirmPasswordVisible.value = !confirmPasswordVisible.value)
 
-const clearForm = () => {
+const clearFormFields = () => {
   firstName.value = ''
   lastName.value = ''
   email.value = ''
@@ -34,6 +40,34 @@ const clearForm = () => {
   confirmPassword.value = ''
   birthDate.value = ''
   termsAccepted.value = false
+}
+
+const resetOtpState = () => {
+  otpSent.value = false
+  otpInput.value = ''
+  generatedOtp.value = ''
+  userUid.value = ''
+}
+
+const generateOtp = () => {
+  return Math.floor(100000 + Math.random() * 900000).toString()
+}
+
+const sendOtpEmail = async (toEmail, otp) => {
+  try {
+    const res = await axios.post('http://localhost:3000/send-otp', {
+      recipient: toEmail,
+      otp: otp,
+    })
+    if (res.data.success) {
+      console.log('OTP email sent to:', toEmail)
+    } else {
+      toast.error('Failed to send OTP email')
+    }
+  } catch (err) {
+    console.error('Error sending OTP email:', err)
+    toast.error('Error sending OTP email')
+  }
 }
 
 const register = async () => {
@@ -76,6 +110,7 @@ const register = async () => {
   try {
     const userCredentials = await createUserWithEmailAndPassword(auth, email.value, password.value)
     const uid = userCredentials.user.uid
+    userUid.value = uid
 
     await setDoc(doc(db, 'users', uid), {
       firstName: firstName.value,
@@ -87,38 +122,13 @@ const register = async () => {
        createdAt: serverTimestamp(),
     })
 
-    toast.success('Please check your email for verification.')
-    console.log('Toast fired, verification email requested')
-    clearForm()
+    generatedOtp.value = generateOtp()
+    await sendOtpEmail(email.value, generatedOtp.value)
 
-    try {
-      await sendEmailVerification(userCredentials.user, {
-        url: `${window.location.origin}/login`,
-      })
-    } catch (emailErr) {
-      console.error('Verification email error:', emailErr)
-      toast.error('Failed to send verification email, but your account was created.')
-    }
+    otpSent.value = true
+    toast.info('OTP sent to your email. Please verify to complete registration.')
 
-    const unsubscribe = auth.onAuthStateChanged(async (currentUser) => {
-      if (currentUser) {
-        try {
-          await reload(currentUser)
-          console.log('Email berified?:', currentUser.emailVerified)
-
-          if (currentUser.emailVerified) {
-            await updateDoc(doc(db, 'users', currentUser.uid), {
-              status: 'active',
-            })
-            toast.success('Email verified! You can now log in.')
-            router.push('/login')
-            unsubscribe()
-          }
-        } catch (listenerErr) {
-          console.error('Listener error:', listenerErr)
-        }
-      }
-    })
+    clearFormFields()
   } catch (err) {
     console.error(err)
     const friendlyMessages = {
@@ -129,6 +139,39 @@ const register = async () => {
     toast.error(friendlyMessages[err.code] || 'Failed to register, please try again')
   } finally {
     isSubmitting.value = false
+  }
+}
+
+const verifyOtp = async () => {
+  if (!otpInput.value || otpInput.value.trim() === '') {
+    toast.error('Please enter your OTP')
+    return
+  }
+
+  if (otpInput.value === generatedOtp.value) {
+    try {
+      if (!userUid.value) {
+        toast.error('User ID not found. Please register again.')
+        return
+      }
+
+      await updateDoc(doc(db, 'users', userUid.value), {
+        status: 'active',
+      })
+      toast.success('Email verified! You can now log in.')
+      clearFormFields()
+      resetOtpState()
+      otpSent.value = false
+      
+      setTimeout(() => {
+        router.push("/login")
+      }, 3000)
+    } catch (err) {
+      console.error(err)
+      toast.error('Failed to verify OTP, please try again')
+    }
+  } else {
+    toast.error('Invalid OTP, please try again')
   }
 }
 </script>
@@ -319,19 +362,41 @@ const register = async () => {
         </form>
       </div>
 
-      </div>
-
-      <Modal panelClass="bg-white"
-        :isOpen="showTerms"
-        :title="'Terms and Conditions'"
-        @close="showTerms = false"
-        :showConfirm="false"
-      >
-        <Terms />
-      </Modal>
-
     </div>
+
+    <Modal panelClass="bg-white"
+      :isOpen="otpSent"
+      :title="'Veify OTP'"
+      @close="otpSent = false"
+      :showConfirm="false"
+    >
+      <div class="space-y-4">
+        <p class="text-sm text-charcoal-600">
+          We've sent a One-Time Password (OTP) to your email. Please enter it below to verify your account.
+        </p>
+        
+        <input v-model="otpInput" type="text" maxlength="6" placeholder="Enter 6-digit OTP" class="input h-12 px-3 text-center tracking-widest font-semibold" />
+
+        <button @click="verifyOtp" 
+                class="w-full py-3 rounded-xl bg-gold-700 text-white font-semibold text-base
+                      hover:bg-gold-800 hover:scale-[1.02] active:scale-[0.98] transition"
+>
+          Verify OTP
+        </button>
+      </div>
+    </Modal>
+
+    <Modal panelClass="bg-white"
+      :isOpen="showTerms"
+      :title="'Terms and Conditions'"
+      @close="showTerms = false"
+      :showConfirm="false"
+    >
+      <Terms />
+    </Modal>
+
   </div>
+</div>
 </template>
 
 <style scoped>

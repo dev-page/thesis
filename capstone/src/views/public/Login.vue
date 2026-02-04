@@ -2,7 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { auth, db } from '@/config/firebaseConfig'
-import { signInWithEmailAndPassword, setPersistence, browserSessionPersistence, browserLocalPersistence, signInWithPopup, GoogleAuthProvider, FacebookAuthProvider, sendPasswordResetEmail } from 'firebase/auth'
+import { signInWithEmailAndPassword, setPersistence, browserSessionPersistence, browserLocalPersistence, signInWithPopup, GoogleAuthProvider, FacebookAuthProvider } from 'firebase/auth'
 import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore'
 import { toast } from 'vue3-toastify'
 import { useAuth } from '@/composables/useAuth'
@@ -16,15 +16,20 @@ const isRememberMe = ref(false)
 const isSubmitting = ref(false)
 const passwordVisible = ref(false)
 
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+const togglePassword = () => { passwordVisible.value = !passwordVisible.value }
+
+const clearFormFields = () => {
+    email.value = ''
+    password.value = ''
+    isRememberMe.value = false
+}
+
 onMounted(() => {
-    if (!isLoading.value && user.value) {
-        router.replace('/')
+    if (isLoading.value && user.value) {
+      router.replace('/')
     }
 })
-
-const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-
-const togglePassword = () => { passwordVisible.value = !passwordVisible.value }
 
 const handleLogin = async () => {
     if (!email.value || !password.value) {
@@ -53,28 +58,23 @@ const handleLogin = async () => {
         const userCredentials = await signInWithEmailAndPassword(auth, email.value.trim(), password.value)
         await userCredentials.user.reload()
 
-        if (!userCredentials.user.emailVerified) {
-            toast.error('Please verify your email before logging in.')
-            return
-        }
-
         const userRef = doc(db, 'users', userCredentials.user.uid)
-        await setDoc(userRef, { status: 'active' }, { merge: true })
-
         const userSnap = await getDoc(userRef)
+
         if (userSnap.exists()) {
           const role = userSnap.data().role
           if (role === 'owner') {
             toast.success('Login successful! Redirecting to Owner Dashboard')
-            router.push('/owner/dashboard')
+            clearFormFields()
+            setTimeout(() => {
+              router.push('/owners/dashboard')
+            }, 3000)
           } else {
             toast.success('Login successful! Redirecting to Customer Dashboard')
+            clearFormFields()
             //router.push('')
           }
         }
-
-        toast.success('Login successful! Redirecting to Dashboard')
-        //router.push('')
     } catch (err) {
         console.error(err)
         const friendlyMessages = {
@@ -88,27 +88,7 @@ const handleLogin = async () => {
 }
 
 const handleForgotPassword = async () => {
-    if (!email.value) {
-        toast.error('Please enter your email address to reset your password.')
-        return
-    }
-
-    if (!EMAIL_REGEX.test(email.value)) {
-        toast.error('Please enter a valid email address.')
-        return
-    }
-
-    try {
-        await sendPasswordResetEmail(auth, email.value.trim())
-        toast.success('Password reset email sent! Please check your inbox.')
-    } catch (err) {
-        console.error(err)
-        const friendlyMessages = {
-            'auth/user-not-found': 'No account found with this email.',
-            'auth/too-many-requests': 'Too many requests. Please try again later.'
-        }
-        toast.error(friendlyMessages[err.code] || 'Failed to send password reset email.')
-    }
+  router.push('/forgot-password')
 }
 
 const handleGoogleLogin = async () => {
@@ -127,17 +107,19 @@ const handleGoogleLogin = async () => {
             status : 'active',
             createdAt: serverTimestamp()
           })
-        } else {
-          await setDoc(userRef, { status : 'active', }, { merge: true })
         }
 
-        const role = userSnap.data().role
+        const role = userSnap.data()?.role || 'customer'
         if (role === 'owner') {
           toast.success('Logged in with Google! Redirecting to Owner Dashboard')
-          router.push('/owner/dashboard')
+          setTimeout(() => {
+            router.push('/owners/dashboard')
+          }, 3000)
         } else {
           toast.success('Logged in with Google! Redirecting to Customer Dashboard')
-          //router.push('')
+          setTimeout(() => {
+            //router.push('')
+          }, 3000)
         }
     } catch (err) {
         console.error(err)
@@ -161,14 +143,12 @@ const handleFacebookLogin = async () => {
             status : 'active',
             createdAt: serverTimestamp()
           })
-        } else {
-          await setDoc(userRef, { status : 'active', }, { merge: true })
         }
 
-        const role = userSnap.data().role
+        const role = userSnap.data()?.role || 'customer'
         if (role === 'owner') {
           toast.success('Logged in with Facebook! Redirecting to Owner Dashboard')
-          router.push('/owner/dashboard')
+          router.push('/owners/dashboard')
         } else {
           toast.success('Logged in with Facebook! Redirecting to Customer Dashboard')
           //router.push('')
@@ -284,12 +264,12 @@ const handleFacebookLogin = async () => {
 
               <button type="button" @click="togglePassword" class="absolute right-4 top-1/2 -translate-y-1/2 text-rose-500 hover:text-gold-700" tabindex="-1">
                 <svg v-if="!passwordVisible" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                </svg>
-                <svg v-else class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.956 9.956 0 012.1-3.592M6.18 6.18A9.956 9.956 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3l18 18" />
+                </svg>
+                <svg v-else class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                 </svg>
               </button>
             </div>
@@ -299,7 +279,7 @@ const handleFacebookLogin = async () => {
                 <input type="checkbox" v-model="isRememberMe" class="accent-gold-700" />
                 Remember me
               </label>
-              <a href="#" class="text-gold-700 hover:underline text-xs">Forgot password?</a>
+              <a href="#" @click.prevent="handleForgotPassword" class="text-gold-700 hover:underline text-xs">Forgot password?</a>
             </div>
 
             <div class="space-y-2">
@@ -379,9 +359,9 @@ const handleFacebookLogin = async () => {
             </div>
           </form>
         </div>
-        </div>
       </div>
     </div>
+  </div>
 </template>
 
 

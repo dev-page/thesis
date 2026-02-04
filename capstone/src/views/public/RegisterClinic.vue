@@ -2,7 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { auth, db } from '@/config/firebaseConfig'
-import { createUserWithEmailAndPassword, sendEmailVerification } from 'firebase/auth'
+import { createUserWithEmailAndPassword } from 'firebase/auth'
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore'
 import { toast } from 'vue3-toastify'
 import { useAuth } from '@/composables/useAuth'
@@ -29,6 +29,10 @@ const confirmPasswordVisible = ref(false)
 const showTerms = ref(false)
 const termsAccepted = ref(false)
 
+const otpSent = ref(false)
+const otpInput = ref('')
+const generatedOtp = ref('')
+
 onMounted(() => {
   if (!isLoading.value && user.value) {
     router.push('/')
@@ -38,7 +42,7 @@ onMounted(() => {
 const togglePassword = () => passwordVisible.value = !passwordVisible.value
 const toggleConfirmPassword = () => confirmPasswordVisible.value = !confirmPasswordVisible.value
 
-const register = async () => {
+const sendOtp = async () => {
   if (!termsAccepted.value) {
     toast.error('You must agree to the terms and conditions')
     return
@@ -79,13 +83,32 @@ const register = async () => {
     return
   }
 
+  generatedOtp.value = Math.floor(100000 + Math.random() * 900000).toString()
+  try {
+    await axios.post('http://localhost:3000/send-otp', {
+      recipient: email.value,
+      otp: generatedOtp.value,
+    })
+    toast.info('OTP sent to your email.')
+    otpSent.value = true
+  } catch (err) {
+    console.error(err)
+    toast.error('Error sending OTP.')
+    return
+  }
+
+  const verifyOtpAndRegister = async () => {
+    if (otpInput.value !== generatedOtp.value) {
+      toast.error('Invalid OTP.')
+      return
+    }
+  }
+
   isSubmitting.value = true
 
   try {
     const userCredentials = await createUserWithEmailAndPassword(auth, email.value, password.value)
     const uid = userCredentials.user.uid
-
-    await sendEmailVerification(userCredentials.user)
 
     const clinicRef = doc(db, 'clinics', uid)
     await setDoc(clinicRef, {
@@ -160,7 +183,7 @@ const register = async () => {
       </div>
 
       <div class="flex items-center justify-center px-4 pt-12 pb-12">
-        <form class="space-y-4 w-full max-w-[480px]" @submit.prevent="register">
+        <form class="space-y-4 w-full max-w-[480px]" @submit.prevent="sendOtp">
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div class="relative">
             <input v-model="firstName" placeholder=" " required class="peer input h-16 pt-4 pb-2 px-3" />

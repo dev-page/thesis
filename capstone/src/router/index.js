@@ -20,6 +20,11 @@ const router = createRouter({
         component: () => import('@/views/public/Register.vue'),
       },
       {
+        path: '/forgot-password',
+        name: 'forgot-password',
+        component: () => import('@/views/public/ForgotPassword.vue'),
+      },
+      {
         path: '/clinic/register',
         name: 'register-clinic',
         component: () => import('@/views/public/RegisterClinic.vue'),
@@ -107,7 +112,13 @@ const router = createRouter({
         component: () => import('@/views/clinic/practitioners/PractitionerDashboard.vue'),
         beforeEnter: requireAuth,
       },
+      {
+        path: '/owners/dashboard',
+        name: 'owner-dashboard',
+        component: () => import('@/views/admin/owner/OwnerDashboard.vue'),
+        beforeEnter: requireAuth,
+      },
     ],
-})
+})  
 
 export default router
