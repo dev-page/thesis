@@ -89,7 +89,7 @@ import { useRouter } from "vue-router";
 const router = useRouter();
 
 const selectPlan = (plan) => {
-  router.push("/subscription");
+  router.push("/subscription-features");
 };
 
 import { defineEmits } from "vue";
@@ -97,8 +97,7 @@ import { defineEmits } from "vue";
 const emit = defineEmits(["close"]);
 
 const proceedToFreeTrial = () => {
-  emit("close");
-  router.push("/clinic/register");
+  router.push({ name: 'register-clinic' });
 };
 </script>
 

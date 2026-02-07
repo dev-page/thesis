@@ -1,13 +1,20 @@
 
 <script>
-import { ref, watch, onUnmounted } from 'vue';
+import { ref, watch, onUnmounted, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
+import { getFirestore, doc, getDoc } from 'firebase/firestore';
+import { getApp } from 'firebase/app';
+import { auth } from '@/config/firebaseConfig';
 
 export default {
   name: 'OwnerSidebar',
   setup() {
     const isOpen = ref(false);
     const router = useRouter();
+    const db = getFirestore(getApp());
+
+    const ownerEmail = ref('');
+    const ownerName = ref('');
 
     const toggleSidebar = () => {
       isOpen.value = !isOpen.value;
@@ -19,18 +26,29 @@ export default {
     };
 
     watch(isOpen, (open) => {
-      if (open) {
-        document.body.style.overflow = 'hidden'; 
-      } else {
-        document.body.style.overflow = ''; 
-      }
+      document.body.style.overflow = open ? 'hidden' : ''; 
     });
 
     onUnmounted(() => {
       document.body.style.overflow = '';
     });
 
-    return { isOpen, toggleSidebar, logout };
+    const loadOwnerInfo = async () => {
+      const user = auth.currentUser;
+      if (user) {
+        ownerEmail.value = user.email;
+        const userRef = doc(db, 'users', user.uid);
+        const userSnap = await getDoc(userRef);
+        if (userSnap.exists()) {
+          const data = userSnap.data();
+          ownerName.value = `${data.firstName || ""} ${data.lastName || ""}`.trim();
+        }
+      }
+    };
+
+    onMounted(loadOwnerInfo);
+
+    return { isOpen, toggleSidebar, logout, ownerEmail, ownerName };
   }
 };
 
@@ -74,7 +92,7 @@ export default {
             <router-link
               to="/owner/dashboard"
               class="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-300 hover:bg-rose-600 hover:text-gold-50 transition-colors"
-              active-class="bg-gold-700 text-slate-50 hover:bg-gold-800"
+              exact-active-class="bg-gold-700 text-slate-50 hover:bg-gold-800"
             >
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -88,7 +106,7 @@ export default {
             <router-link
               to="/owner/branch"
               class="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-300 hover:bg-rose-600 hover:text-gold-50 transition-colors"
-              active-class="bg-gold-700 text-slate-50 hover:bg-gold-800"
+              exact-active-class="bg-gold-700 text-slate-50 hover:bg-gold-800"
             >
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -102,7 +120,7 @@ export default {
             <router-link
               to="/owner/staff"
               class="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-300 hover:bg-rose-600 hover:text-gold-50 transition-colors"
-              active-class="bg-gold-700 text-slate-50 hover:bg-gold-800"
+              exact-active-class="bg-gold-700 text-slate-50 hover:bg-gold-800"
             >
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -121,7 +139,7 @@ export default {
             <router-link
               to="/owner/finance"
               class="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-300 hover:bg-rose-600 hover:text-gold-50 transition-colors"
-              active-class="bg-gold-700 text-slate-50 hover:bg-gold-800"
+              exact-active-class="bg-gold-700 text-slate-50 hover:bg-gold-800"
             >
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -140,7 +158,7 @@ export default {
             <router-link
               to="/owner/clinic-profile"
               class="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-300 hover:bg-rose-600 hover:text-gold-50 transition-colors"
-              active-class="bg-gold-700 text-slate-50 hover:bg-gold-800"
+              exact-active-class="bg-gold-700 text-slate-50 hover:bg-gold-800"
             >
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -154,7 +172,7 @@ export default {
             <router-link
               to="/owner/reports"
               class="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-300 hover:bg-rose-600 hover:text-gold-50 transition-colors"
-              active-class="bg-gold-700 text-slate-50 hover:bg-gold-800"
+              exact-active-class="bg-gold-700 text-slate-50 hover:bg-gold-800"
             >
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -171,8 +189,8 @@ export default {
         <div class="flex items-center gap-3 px-4 py-3">
           <div class="h-10 w-10 rounded-full bg-gold-700 flex items-center justify-center text-slate-50 font-semibold"></div>
           <div class="flex-1">
-            <p class="text-slate-50 text-sm font-medium">Aesthetic Center Owner</p>
-            <p class="text-slate-400 text-xs">owner@aestheticare.com</p>
+            <p class="text-slate-50 text-sm font-medium">{{ ownerName }}</p>
+            <p class="text-slate-400 text-xs">{{ ownerEmail }}</p>
           </div>
         </div>
 

@@ -113,9 +113,9 @@ const register = async () => {
     userUid.value = uid
 
     await setDoc(doc(db, 'users', uid), {
-      firstName: firstName.value,
-      lastName: lastName.value,
-      email: email.value,
+      firstName: firstName.value.trim(),
+      lastName: lastName.value.trim(),
+      email: email.value.trim(),
       birthDate: birthDate.value ? new Date(birthDate.value) : null,
       role: 'Customer',
       status: 'Pending',

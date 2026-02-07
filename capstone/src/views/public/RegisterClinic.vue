@@ -128,19 +128,19 @@ const registerClinic = async () => {
     userUid.value = uid
 
     await setDoc(doc(db, 'users', uid), {
-      firstName: firstName.value,
-      lastName: lastName.value,
+      firstName: firstName.value.trim(),
+      lastName: lastName.value.trim(),
       birthDate: birthDate.value ? new Date(birthDate.value) : null,
-      email: email.value,
-      contactNumber: contactNumber.value,
+      email: email.value.trim(),
+      contactNumber: contactNumber.value.trim(),
       role: 'Owner',
       status: 'Pending',
       createdAt: serverTimestamp(),
     })
 
     await setDoc(doc(db, 'clinics', uid), {
-      clinicName: clinicName.value,
-      clinicLocation: clinicLocation.value,
+      clinicName: clinicName.value.trim(),
+      clinicLocation: clinicLocation.value.trim(),
       clinicBranch: 'Main Branch',
       ownerId: uid,
       createdAt: serverTimestamp(),

@@ -24,7 +24,7 @@
             </a>
           </li>
           <li>
-            <router-link to="/subscription" class="relative text-charcoal-700 hover:text-gold-700 hover:font-bold transition-all duration-300
+            <router-link to="/subscription-features" class="relative text-charcoal-700 hover:text-gold-700 hover:font-bold transition-all duration-300
                       before:absolute before:left-0 before:bottom-[-4px] before:w-0 before:h-[2px] before:bg-gold-700
                       before:transition-all before:duration-300 hover:before:w-full">
               Pricing
@@ -193,6 +193,7 @@
 <script>
 import { onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
+import { useAuth } from "@/composables/useAuth";
 import Modal from "@/components/common/Modal.vue";
 import SubscriptionPopup from "@/components/common/SubscriptionPopup.vue";
 import placeholder from '@/assets/placeholder.svg'
@@ -204,6 +205,7 @@ export default {
     SubscriptionPopup,
   },
   setup() {
+    const { user, isLoading, initAuth } = useAuth();
     const router = useRouter();
     const capabilityRows = ref([]);
     const showSubscriptionPopup = ref(false);
@@ -241,6 +243,8 @@ export default {
     ];
 
     onMounted(() => {
+      initAuth()
+
       const observer = new IntersectionObserver(
         (entries) => {
           entries.forEach((entry) => {
@@ -261,7 +265,7 @@ export default {
       capabilityRows.value.forEach((row) => observer.observe(row));
     });
 
-    return { capabilityRows, capabilities, showSubscriptionPopup };
+    return { capabilityRows, capabilities, showSubscriptionPopup, user, isLoading };
   },
 };
 </script>
