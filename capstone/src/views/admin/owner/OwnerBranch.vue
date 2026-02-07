@@ -1,55 +1,73 @@
 <script>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
+import { getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, getDocs} from 'firebase/firestore'
+import { getApp } from 'firebase/app'
 import OwnerSidebar from '@/components/sidebar/OwnerSidebar.vue'
 import Modal from '@/components/common/Modal.vue'
+import { toast } from 'vue3-toastify'
 
 export default {
   name: 'OwnerBranch',
   components: { OwnerSidebar, Modal },
   setup() {
     // Branch list
-    const branches = ref([
-      { id: 1, name: 'Downtown Clinic', employees: 22, revenue: 32500, status: 'Active' },
-      { id: 2, name: 'Uptown Clinic', employees: 18, revenue: 28400, status: 'Active' },
-      { id: 3, name: 'Westside Clinic', employees: 14, revenue: 19600, status: 'Active' },
-      { id: 4, name: 'Eastside Clinic', employees: 12, revenue: 17400, status: 'Active' },
-      { id: 5, name: 'North Clinic', employees: 10, revenue: 15400, status: 'Under Review' },
-      { id: 6, name: 'South Clinic', employees: 8, revenue: 15200, status: 'Active' }
-    ])
+    const db = getFirestore(getApp());
+    const branches = ref([]);
+    const showModal = ref(false);
+    const currentBranch = ref({ id: null, name: '', employees: 0, revenue: 0, status: 'Active' });
 
-    const showModal = ref(false)
-    const currentBranch = ref({ id: null, name: '', employees: 0, revenue: 0, status: 'Active' })
+    const loadBranches = async () => {
+      const snapshot = await getDocs(collection(db, "clinics"));
+      branches.value = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data(), }));
+    };
+
+    onMounted(loadBranches);
 
     const openAddModal = () => {
       currentBranch.value = { id: null, name: '', employees: 0, revenue: 0, status: 'Active' }
       showModal.value = true
-    }
+    };
 
     const openEditModal = (branch) => {
       currentBranch.value = { ...branch }
       showModal.value = true
-    }
+    };
 
-    const deleteBranch = (id) => {
+    const deleteBranch = async (id) => {
       if (confirm('Are you sure you want to delete this branch?')) {
-        branches.value = branches.value.filter(b => b.id !== id)
+        await deleteDoc(doc(db, "clinics", id));
+        branches.value = branches.value.filter((b) => b.id !== id)
+        toast.success('Branch deleted successfully.')
       }
-    }
+    };
 
-    const saveBranch = () => {
-      if (!currentBranch.value.name.trim()) {
-        alert('Branch name is required')
+    const saveBranch = async () => {
+      if (!currentBranch.value.name || !currentBranch.value.name.trim()) {
+        toast.error('Branch name is required')
         return
       }
 
       if (currentBranch.value.id) {
-        const index = branches.value.findIndex(b => b.id === currentBranch.value.id)
-        if (index !== -1) branches.value[index] = { ...currentBranch.value }
+        const branchRef = doc(db, "clinics", currentBranch.value.id);
+        await updateDoc(branchRef, {
+          clinicBranch: currentBranch.value.name.trim(),
+          employees: currentBranch.value.employees,
+          revenue: currentBranch.value.revenue,
+          status: currentBranch.value.status
+        });
+        const index = branches.value.findIndex((b) => b.id === currentBranch.value.id);
+        if (index !== -1) branches.value[index] = { ...currentBranch.value, clinicBranch: currentBranch.value.name.trim() }
+        toast.success('Branch updated successfully.')
       } else {
-        const newId = Math.max(0, ...branches.value.map(b => b.id)) + 1
-        branches.value.push({ ...currentBranch.value, id: newId })
+        const docRef = await addDoc(collection(db, "clinics"), {
+          clinicBranch: currentBranch.value.name.trim(),
+          employees: currentBranch.value.employees,
+          revenue: currentBranch.value.revenue,
+          status: currentBranch.value.status
+        });
+        branches.value.push({ id: docRef.id, ...currentBranch.value, clinicBranch: currentBranch.value.name.trim() })
+        toast.success('Branch added successfully.')
       }
-
       showModal.value = false
     }
 
@@ -103,9 +121,9 @@ export default {
               :key="branch.id"
               class="hover:bg-slate-700 transition-colors"
             >
-              <td class="py-2 px-2 sm:py-3 sm:px-4 font-medium">{{ branch.name }}</td>
+              <td class="py-2 px-2 sm:py-3 sm:px-4 font-medium">{{ branch.clinicBranch }}</td>
               <td class="py-2 px-2 sm:py-3 sm:px-4">{{ branch.employees }}</td>
-              <td class="py-2 px-2 sm:py-3 sm:px-4">${{ branch.revenue.toLocaleString() }}</td>
+              <td class="py-2 px-2 sm:py-3 sm:px-4">${{ branch.revenue ? branch.revenue.toLocaleString() : 0 }}</td>
               <td class="py-2 px-2 sm:py-3 sm:px-4">
                 <span
                   :class="[

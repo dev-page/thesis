@@ -1,24 +1,33 @@
 <script>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
+import { getFirestore, collection, getDocs } from 'firebase/firestore';
+import { getApp } from 'firebase/app'
 import OwnerSidebar from '@/components/sidebar/OwnerSidebar.vue'
 
 export default {
   name: 'OwnerDashboard',
   components: { OwnerSidebar },
   setup() {
-    //Static data
-    const totalBranches = ref(6)
-    const totalEmployees = ref(84)
-    const monthlyRevenue = ref(128500)
+    const db = getFirestore(getApp())
 
-    const branches = ref([
-      { id: 1, name: 'Downtown Clinic', employees: 22, revenue: 32500, status: 'Active' },
-      { id: 2, name: 'Uptown Clinic', employees: 18, revenue: 28400, status: 'Active' },
-      { id: 3, name: 'Westside Clinic', employees: 14, revenue: 19600, status: 'Active' },
-      { id: 4, name: 'Eastside Clinic', employees: 12, revenue: 17400, status: 'Active' },
-      { id: 5, name: 'North Clinic', employees: 10, revenue: 15400, status: 'Under Review' },
-      { id: 6, name: 'South Clinic', employees: 8, revenue: 15200, status: 'Active' }
-    ])
+    const totalBranches = ref(0)
+    const totalEmployees = ref(0)
+    const monthlyRevenue = ref(0)
+
+    const branches = ref([])
+
+    const loadDashboardData = async () => {
+      const snapshot = await getDocs(collection(db, "clinics"));
+      const branchData = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data(), }));
+
+      branches.value = branchData
+      
+      totalBranches.value = branches.value.length
+      totalEmployees.value = branches.value.reduce((sum, b) => sum + (b.employees || 0), 0)
+      monthlyRevenue.value = branches.value.reduce((sum, b) => sum + (b.revenue || 0), 0)
+    };
+
+    onMounted(loadDashboardData)
 
     return {
       totalBranches,
@@ -77,7 +86,7 @@ export default {
           </div>
           <h3 class="text-slate-400 text-sm mb-1">Monthly Revenue</h3>
           <p class="text-3xl font-bold text-white">
-            ${{ monthlyRevenue.toLocaleString() }}
+            ${{ monthlyRevenue ? monthlyRevenue.toLocaleString() : 0 }}
           </p>
           <p class="text-xs text-green-400 mt-1">+8% from last month</p>
         </div>
@@ -96,7 +105,7 @@ export default {
             <div>
               <p class="text-white font-medium">{{ branch.name }}</p>
               <p class="text-slate-400 text-sm">
-                {{ branch.employees }} employees • ${{ branch.revenue.toLocaleString() }} revenue
+                {{ branch.employees || 0 }} employees • ${{ branch.revenue ? branch.revenue.toLocaleString() : 0 }} revenue
               </p>
             </div>
 
@@ -122,12 +131,12 @@ export default {
           <div v-for="branch in branches" :key="branch.id">
             <div class="flex justify-between text-sm mb-1">
               <span class="text-white">{{ branch.name }}</span>
-              <span class="text-slate-400">${{ branch.revenue.toLocaleString() }}</span>
+              <span class="text-slate-400">${{ branch.revenue ? branch.revenue.toLocaleString() : 0 }}</span>
             </div>
             <div class="w-full bg-slate-700 rounded-full h-2">
               <div
                 class="h-2 rounded-full bg-gold-700"
-                :style="{ width: `${(branch.revenue / monthlyRevenue) * 100}%` }"
+                :style="{ width: monthlyRevenue ? `${(branch.revenue / monthlyRevenue) * 100}%` : '0%' }"
               ></div>
             </div>
           </div>

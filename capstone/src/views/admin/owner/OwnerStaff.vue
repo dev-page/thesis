@@ -1,20 +1,19 @@
 <script>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
+import { getFirestore, collection, getDocs, addDoc, updateDoc, doc, deleteDoc } from 'firebase/firestore'
+import { getApp } from 'firebase/app'
 import OwnerSidebar from '@/components/sidebar/OwnerSidebar.vue'
 import Modal from '@/components/common/Modal.vue'
+import { toast } from 'vue3-toastify'
 
 export default {
   name: 'OwnerStaff',
   components: { OwnerSidebar, Modal },
   setup() {
-    // Sample staff list
-    const staffList = ref([
-      { id: 1, name: 'Alice Johnson', email: 'alice@clinic.com', role: 'Manager', level: 'Branch', branch: 'Downtown Clinic' },
-      { id: 2, name: 'Bob Smith', email: 'bob@clinic.com', role: 'Receptionist', level: 'Office', branch: '' },
-      { id: 3, name: 'Carol Davis', email: 'carol@clinic.com', role: 'Nurse', level: 'Branch', branch: 'Uptown Clinic' }
-    ])
+    const db = getFirestore(getApp())
+    const staffList = ref([])
 
-    // Branches for selection
+    // Static branch list - replace with dynamic data from Firestore if needed
     const branches = ref([
       'Downtown Clinic',
       'Uptown Clinic',
@@ -32,6 +31,14 @@ export default {
       level: 'Branch',
       branch: ''
     })
+    
+    // Load staff data from Firestore
+    const loadStaff = async () => {
+      const snapshot = await getDocs(collection(db, "staff"));
+      staffList.value = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+    }
+
+    onMounted(loadStaff)
 
     // Open Add Staff Modal
     const openAddModal = () => {
@@ -53,30 +60,48 @@ export default {
     }
 
     // Delete Staff
-    const deleteStaff = (id) => {
+    const deleteStaff = async (id) => {
       if (confirm('Are you sure you want to delete this staff member?')) {
-        staffList.value = staffList.value.filter(s => s.id !== id)
+        await deleteDoc(doc(db, "staff", id));
+        staffList.value = staffList.value.filter((s) => s.id !== id)
+        toast.success('Staff member deleted successfully!')
       }
     }
 
     // Save Staff (Add/Edit)
-    const saveStaff = () => {
+    const saveStaff = async () => {
       if (!currentStaff.value.name.trim() || !currentStaff.value.email.trim() || !currentStaff.value.role.trim()) {
-        alert('Name, email, and role are required.')
+        toast.error('Name, email, and role are required.')
         return
       }
 
       if (currentStaff.value.level === 'Branch' && !currentStaff.value.branch) {
-        alert('Branch is required for branch-level staff.')
+        toast.error('Branch is required for branch-level staff.')
         return
       }
 
       if (currentStaff.value.id) {
-        const index = staffList.value.findIndex(s => s.id === currentStaff.value.id)
+        const staffRef = doc(db, "staff", currentStaff.value.id)
+        await updateDoc(staffRef, {
+          name: currentStaff.value.name,
+          email: currentStaff.value.email,
+          role: currentStaff.value.role,
+          level: currentStaff.value.level,
+          branch: currentStaff.value.branch
+        })
+        const index = staffList.value.findIndex((s) => s.id === currentStaff.value.id)
         if (index !== -1) staffList.value[index] = { ...currentStaff.value }
+        toast.success('Staff member updated successfully!')
       } else {
-        const newId = Math.max(0, ...staffList.value.map(s => s.id)) + 1
-        staffList.value.push({ ...currentStaff.value, id: newId })
+        await addDoc(collection(db, "staff"), {
+          name: currentStaff.value.name,
+          email: currentStaff.value.email,
+          role: currentStaff.value.role,
+          level: currentStaff.value.level,
+          branch: currentStaff.value.branch
+        })
+        staffList.value.push({ ...currentStaff.value, id: Date.now().toString() })
+        toast.success('Staff member added successfully!')
       }
 
       showModal.value = false

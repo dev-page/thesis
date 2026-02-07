@@ -1,22 +1,33 @@
-
 <script>
 import OwnerSidebar from '@/components/sidebar/OwnerSidebar.vue';
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
+import { getFirestore, collection, getDocs } from 'firebase/firestore';
+import { getApp } from 'firebase/app';
 
 export default {
   name: 'OwnerReports',
   components: { OwnerSidebar },
   setup() {
+    const db = getFirestore(getApp());
     const totalBranches = ref(3);
     const totalEmployees = ref(45);
     const monthlyRevenue = ref(152300);
     const newInquiries = ref(28);
 
-    const branches = ref([
-      { name: 'Downtown', employees: 15, revenue: 65200, newInquiries: 12, conversionRate: 67 },
-      { name: 'Uptown', employees: 10, revenue: 42000, newInquiries: 8, conversionRate: 50 },
-      { name: 'Suburb', employees: 20, revenue: 45100, newInquiries: 8, conversionRate: 72 },
-    ]);
+    const branches = ref([]);
+
+    const loadReports = async () => {
+      const snapshot = await getDocs(collection(db, "clinics"));
+      const branchData = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+      branches.value = branchData;
+
+      totalBranches.value = branchData.length;
+      totalEmployees.value = branchData.reduce((sum, b) => sum + (b.employees || 0), 0);
+      monthlyRevenue.value = branchData.reduce((sum, b) => sum + (b.revenue || 0), 0);
+      newInquiries.value = branchData.reduce((sum, b) => sum + (b.newInquiries || 0), 0);
+    };
+
+    onMounted(loadReports);
 
     return { totalBranches, totalEmployees, monthlyRevenue, newInquiries, branches };
   }

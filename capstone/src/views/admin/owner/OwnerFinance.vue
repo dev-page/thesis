@@ -2,33 +2,27 @@
 import OwnerSidebar from '@/components/sidebar/OwnerSidebar.vue';
 import { ref, onMounted, computed, watch } from 'vue';
 import Chart from 'chart.js/auto';
+import { getFirestore, collection, getDocs } from 'firebase/firestore';
+import { getApp } from 'firebase/app';
 
 export default {
   name: 'OwnerFinance',
   components: { OwnerSidebar },
   setup() {
-    const totalPayroll = ref(64200);
-    const revenue = ref(152300);
+    const db = getFirestore(getApp());
+    const totalPayroll = ref(0);
+    const revenue = ref(0);
 
     // Branches with employees and proposed salaries
-    const branches = ref([
-      { name: 'Downtown', employees: [{ proposedSalary: 12000 }, { proposedSalary: 13000 }] },
-      { name: 'Uptown', employees: [{ proposedSalary: 9000 }, { proposedSalary: 9000 }] },
-      { name: 'Suburb', employees: [{ proposedSalary: 10000 }, { proposedSalary: 11200 }] }
-    ]);
-
-    const reports = ref([
-      { branch: 'Downtown', employee: 'Alice Smith', proposedSalary: 12000, status: 'Pending' },
-      { branch: 'Uptown', employee: 'Bob Johnson', proposedSalary: 9000, status: 'Approved' },
-      { branch: 'Suburb', employee: 'Charlie Lee', proposedSalary: 11200, status: 'Pending' },
-    ]);
+    const branches = ref([]);
+    const reports = ref([]);
 
     const editReport = (report) => {
       alert(`Editing report for ${report.employee} at ${report.branch}`);
       // Here you could open a modal or navigate to an edit page
     };
 
-    const payrollPercentage = computed(() => ((totalPayroll.value / revenue.value) * 100).toFixed(1));
+    const payrollPercentage = computed(() => revenue.value ? ((totalPayroll.value / revenue.value) * 100).toFixed(1) : 0 );
 
     // Canvas refs
     const payrollChart = ref(null);
@@ -36,10 +30,20 @@ export default {
     let payrollChartInstance = null;
     let financeChartInstance = null;
 
+    const loadFinanceData = async () => {
+      const snapshot = await getDocs(collection(db, "clinics"));
+      const branchData = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+
+      branches.value = branchData;
+
+      totalPayroll.value = branchData.reduce((sum, b) => sum + (b.employees ? b.employees.reduce((s, e) => s + (e.proposedSalary || 0), 0) : 0), 0);
+      revenue.value = branchData.reduce((sum, b) => sum + (b.revenue || 0), 0);
+    }
+
     // Payroll by branch chart
     const renderPayrollChart = () => {
-      const labels = branches.value.map(b => b.name);
-      const data = branches.value.map(b => b.employees.reduce((sum, e) => sum + e.proposedSalary, 0));
+      const labels = branches.value.map(b => b.name || b.clinicName);
+      const data = branches.value.map(b => b.employees ? b.employees.reduce((sum, e) => sum + (e.proposedSalary || 0), 0) : 0);
 
       if (payrollChartInstance) payrollChartInstance.destroy();
 
@@ -106,7 +110,8 @@ export default {
       });
     };
 
-    onMounted(() => {
+    onMounted(async () => {
+      await loadFinanceData();
       renderPayrollChart();
       renderFinanceChart();
     });
