@@ -113,11 +113,17 @@ const router = createRouter({
         beforeEnter: requireAuth,
       },
       {
-        path: '/owners/dashboard',
+        path: '/owner/dashboard',
         name: 'owner-dashboard',
         component: () => import('@/views/admin/owner/OwnerDashboard.vue'),
         beforeEnter: requireAuth,
       },
+      {
+        path: '/owner/branch',
+        name: 'owner-branch',
+        component: () => import('@/views/admin/owner/OwnerBranch.vue'),
+        beforeEnter: requireAuth,
+      }
     ],
 })  
 

@@ -117,8 +117,8 @@ const register = async () => {
       lastName: lastName.value,
       email: email.value,
       birthDate: birthDate.value ? new Date(birthDate.value) : null,
-      role: 'customer',
-      status: 'pending',
+      role: 'Customer',
+      status: 'Pending',
        createdAt: serverTimestamp(),
     })
 
@@ -156,7 +156,7 @@ const verifyOtp = async () => {
       }
 
       await updateDoc(doc(db, 'users', userUid.value), {
-        status: 'active',
+        status: 'Active',
       })
       toast.success('Email verified! You can now log in.')
       clearFormFields()

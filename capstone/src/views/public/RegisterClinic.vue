@@ -132,15 +132,16 @@ const registerClinic = async () => {
       lastName: lastName.value,
       birthDate: birthDate.value ? new Date(birthDate.value) : null,
       email: email.value,
-      role: 'owner',
-      status: 'pending',
+      contactNumber: contactNumber.value,
+      role: 'Owner',
+      status: 'Pending',
       createdAt: serverTimestamp(),
     })
 
     await setDoc(doc(db, 'clinics', uid), {
       clinicName: clinicName.value,
       clinicLocation: clinicLocation.value,
-      contactNumber: contactNumber.value,
+      clinicBranch: 'Main Branch',
       ownerId: uid,
       createdAt: serverTimestamp(),
     })
@@ -178,7 +179,7 @@ const verifyOtp = async () => {
       }
 
       await updateDoc(doc(db, 'users', userUid.value), {
-        status: 'active',
+        status: 'Active',
       })
       toast.success('Email verified! You can now log in.')
       clearFormFields()

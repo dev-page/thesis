@@ -63,11 +63,11 @@ const handleLogin = async () => {
 
         if (userSnap.exists()) {
           const role = userSnap.data().role
-          if (role === 'owner') {
+          if (role === 'Owner') {
             toast.success('Login successful! Redirecting to Owner Dashboard')
             clearFormFields()
             setTimeout(() => {
-              router.push('/owners/dashboard')
+              router.push('/owner/dashboard')
             }, 3000)
           } else {
             toast.success('Login successful! Redirecting to Customer Dashboard')
@@ -103,17 +103,17 @@ const handleGoogleLogin = async () => {
         if (!userSnap.exists()) {
           await setDoc(userRef, {
             email: userCredentials.user.email,
-            role: 'customer',
-            status : 'active',
+            role: 'Customer',
+            status : 'Active',
             createdAt: serverTimestamp()
           })
         }
 
-        const role = userSnap.data()?.role || 'customer'
-        if (role === 'owner') {
+        const role = userSnap.data()?.role || 'Customer'
+        if (role === 'Owner') {
           toast.success('Logged in with Google! Redirecting to Owner Dashboard')
           setTimeout(() => {
-            router.push('/owners/dashboard')
+            router.push('/owner/dashboard')
           }, 3000)
         } else {
           toast.success('Logged in with Google! Redirecting to Customer Dashboard')
@@ -139,16 +139,16 @@ const handleFacebookLogin = async () => {
         if (!userSnap.exists()) {
           await setDoc(userRef, {
             email: userCredentials.user.email,
-            role: 'customer',
-            status : 'active',
+            role: 'Customer',
+            status : 'Active',
             createdAt: serverTimestamp()
           })
         }
 
-        const role = userSnap.data()?.role || 'customer'
-        if (role === 'owner') {
+        const role = userSnap.data()?.role || 'Customer'
+        if (role === 'Owner') {
           toast.success('Logged in with Facebook! Redirecting to Owner Dashboard')
-          router.push('/owners/dashboard')
+          router.push('/owner/dashboard')
         } else {
           toast.success('Logged in with Facebook! Redirecting to Customer Dashboard')
           //router.push('')
