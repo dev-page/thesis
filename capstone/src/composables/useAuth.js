@@ -1,4 +1,4 @@
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref } from 'vue'
 import { auth } from '@/config/firebaseConfig'
 import { onAuthStateChanged, signOut } from 'firebase/auth'
 import { useRouter } from 'vue-router'
@@ -8,7 +8,6 @@ const isLoading = ref(true)
 const isLoggingOut = ref(false)
 
 let unsubscribe = null
-const router = useRouter()
 
 const initAuth = () => {
   if (unsubscribe) return // Already initialized
@@ -19,35 +18,28 @@ const initAuth = () => {
   })
 }
 
-const logout = async () => {
-  isLoggingOut.value = true
-  try {
-    await signOut(auth)
-    setTimeout(() => {
-      router.push('/')
-    }, 1000)
-  } catch (error) {
-    console.error('Logout error:', error)
-  } finally {
-    isLoggingOut.value = false
-  }
-}
-
 export function useAuth() {
-  onMounted(() => {
-    initAuth()
-  })
-
-  onUnmounted(() => {
-    if (unsubscribe) {
-      unsubscribe()
-      unsubscribe = null
-    }
-  })
+  const router = useRouter()
+  
+  const logout = async () => {
+    isLoggingOut.value = true
+    try {
+      await signOut(auth)
+      setTimeout(() => {
+        router.push('/')
+      }, 1000)
+    } catch (error) {
+      console.error('Logout error:', error)
+    } finally {
+      isLoggingOut.value = false
+    } 
+  }
 
   return {
     user,
     isLoading,
-    logout
+    isLoggingOut,
+    logout,
+    initAuth
   }
 }

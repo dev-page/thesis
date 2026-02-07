@@ -1,8 +1,10 @@
 import { useAuth } from '@/composables/useAuth'
 import { usePermissions } from '@/composables/usePermissions'
+import { useSubscription } from '@/composables/useSubscription'
 
 export const requireAuth = (to, from, next) => {
-  const { user, isLoading } = useAuth()
+  const { user, isLoading, initAuth } = useAuth()
+  initAuth()
 
   if (isLoading.value) {
     // Still loading, wait
