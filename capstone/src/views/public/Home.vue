@@ -209,6 +209,7 @@ export default {
     const router = useRouter();
     const capabilityRows = ref([]);
     const showSubscriptionPopup = ref(false);
+    
     const capabilities = [
       {
         title: "Appointments & Scheduling",

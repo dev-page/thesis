@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { auth, db } from '@/config/firebaseConfig'
 import { signInWithEmailAndPassword, setPersistence, browserSessionPersistence, browserLocalPersistence, signInWithPopup, GoogleAuthProvider, FacebookAuthProvider } from 'firebase/auth'
@@ -34,18 +34,6 @@ const clearFormFields = () => {
   password.value = ''
   isRememberMe.value = false
 }
-
-onMounted(async () => {
-    if (!isLoading.value && user.value) {
-      const userRef = doc(db, 'users', user.value.uid)
-      const userSnap = await getDoc(userRef)
-
-      if (userSnap.exists()) {
-        const role = userSnap.data().role || 'Customer'
-        router.replace(roleRoutes[role]) || '/dashboard'
-      }
-    }
-})
 
 const handleLogin = async () => {
     if (!email.value || !password.value) {

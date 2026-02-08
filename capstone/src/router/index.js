@@ -61,14 +61,15 @@ router.beforeEach((to, from, next) => {
     return next();
   }
 
-  // Guest-only routes
-  if (to.meta.guestOnly && user.value) {
-    return next("/dashboard");
-  }
-
   // Auth-required routes
   if (to.meta.requiresAuth && !user.value) {
     return next("/login");
+  }
+
+  // Guest-only routes (like /login)
+  if (to.meta.guestOnly && user.value) {
+    // Instead of forcing dashboard, just allow navigation
+    return next();
   }
 
   // Permission-required routes
