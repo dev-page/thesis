@@ -1,7 +1,8 @@
 <script>
 import { ref, onMounted } from 'vue'
-import { getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, getDocs} from 'firebase/firestore'
+import { getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, getDocs, serverTimestamp} from 'firebase/firestore'
 import { getApp } from 'firebase/app'
+import { getAuth } from 'firebase/auth'
 import OwnerSidebar from '@/components/sidebar/OwnerSidebar.vue'
 import Modal from '@/components/common/Modal.vue'
 import { toast } from 'vue3-toastify'
@@ -12,9 +13,18 @@ export default {
   setup() {
     // Branch list
     const db = getFirestore(getApp());
+    const auth = getAuth(getApp());
     const branches = ref([]);
-    const showModal = ref(false);
-    const currentBranch = ref({ id: null, name: '', employees: 0, revenue: 0, status: 'Active' });
+    const showAddModal = ref(false);
+    const showEditModal = ref(false);
+
+    const currentBranch = ref({ 
+      id: null,
+      name: '',
+      revenue: 0,
+      status: 'Active',
+      location: '',
+    });
 
     const loadBranches = async () => {
       const snapshot = await getDocs(collection(db, "clinics"));
@@ -25,12 +35,12 @@ export default {
 
     const openAddModal = () => {
       currentBranch.value = { id: null, name: '', employees: 0, revenue: 0, status: 'Active' }
-      showModal.value = true
+      showAddModal.value = true
     };
 
     const openEditModal = (branch) => {
       currentBranch.value = { ...branch }
-      showModal.value = true
+      showEditModal.value = true
     };
 
     const deleteBranch = async (id) => {
@@ -47,23 +57,49 @@ export default {
         return
       }
 
+      if (!currentBranch.value.location.trim()) {
+        toast.error('Branch location is required')
+        return
+      }
+
+      const user = auth.currentUser
+      const ownerId = user.uid
+
       if (currentBranch.value.id) {
         const branchRef = doc(db, "clinics", currentBranch.value.id);
         await updateDoc(branchRef, {
           clinicBranch: currentBranch.value.name.trim(),
+          clinicLocation: currentBranch.value.location.trim(),
           revenue: currentBranch.value.revenue,
-          status: currentBranch.value.status
+          status: currentBranch.value.status,
+          ownerId: ownerId
         });
         const index = branches.value.findIndex((b) => b.id === currentBranch.value.id);
-        if (index !== -1) branches.value[index] = { ...currentBranch.value, clinicBranch: currentBranch.value.name.trim() }
+        if (index !== -1) {
+          branches.value[index] = { 
+            ...currentBranch.value, 
+            clinicBranch: currentBranch.value.name.trim(),
+            clinicLocation: currentBranch.value.location.trim(),
+            ownerId: ownerId
+          }
+        }
         toast.success('Branch updated successfully.')
       } else {
         const docRef = await addDoc(collection(db, "clinics"), {
           clinicBranch: currentBranch.value.name.trim(),
+          clinicLocation: currentBranch.value.location.trim(),
           revenue: currentBranch.value.revenue,
-          status: currentBranch.value.status
+          status: currentBranch.value.status,
+          ownerId: ownerId,
+          cratedAt: serverTimestamp()
         });
-        branches.value.push({ id: docRef.id, ...currentBranch.value, clinicBranch: currentBranch.value.name.trim() })
+        branches.value.push({ 
+          id: docRef.id, 
+          ...currentBranch.value, 
+          clinicBranch: currentBranch.value.name.trim(),
+          clinicLocation: currentBranch.value.location.trim(),
+          ownerId: ownerId
+        })
         toast.success('Branch added successfully.')
       }
       showModal.value = false
@@ -79,7 +115,8 @@ export default {
 
     return {
       branches,
-      showModal,
+      showAddModal,
+      showEditModal,
       currentBranch,
       openAddModal,
       openEditModal,
@@ -169,12 +206,10 @@ export default {
         </table>
       </div>
 
-      <!-- Modal -->
-      <Modal :isOpen="showModal" panelClass="bg-slate-800 text-white w-full max-w-md" @close="showModal = false">
+      <!-- Add Branch Modal -->
+      <Modal :isOpen="showAddModal" panelClass="bg-slate-800 text-white w-full max-w-md" @close="showAddModal = false">
         <template #header>
-          <h2 class="text-xl font-semibold text-white">
-            {{ currentBranch.id ? 'Edit Branch' : 'Add Branch' }}
-          </h2>
+          <h2 class="text-xl font-semibold text-white">Add Branch</h2>
         </template>
 
         <template #body>
@@ -185,6 +220,16 @@ export default {
                 type="text"
                 v-model="currentBranch.name"
                 placeholder="Enter branch name"
+                class="w-full px-3 py-2 rounded-lg bg-slate-700 text-white border border-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            
+            <div>
+              <label class="block text-slate-400 mb-1">Location</label>
+              <input
+                type="text"
+                v-model="currentBranch.location"
+                placeholder="Enter location"
                 class="w-full px-3 py-2 rounded-lg bg-slate-700 text-white border border-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
@@ -214,17 +259,74 @@ export default {
 
         <template #footer>
           <div class="flex flex-col sm:flex-row justify-end sm:space-x-2 space-y-2 sm:space-y-0">
-            <button
-              @click="showModal = false"
-              class="bg-slate-600 hover:bg-slate-700 text-white px-4 py-2 rounded transition"
-            >
+            <button @click="showAddModal = false" class="bg-slate-600 hover:bg-slate-700 text-white px-4 py-2 rounded transition">
               Cancel
             </button>
-            <button
-              @click="saveBranch"
-              class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded transition"
-            >
-              {{ currentBranch.id ? 'Update' : 'Add' }}
+            <button @click="saveBranch" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded transition">
+              Add
+            </button>
+          </div>
+        </template>
+      </Modal>
+
+      <!-- Edit Branch Modal -->
+      <Modal :isOpen="showEditModal" panelClass="bg-slate-800 text-white w-full max-w-md" @close="showEditModal = false">
+        <template #header>
+          <h2 class="text-xl font-semibold text-white">Edit Branch</h2>
+        </template>
+
+        <template #body>
+          <form class="space-y-4">
+            <div>
+              <label class="block text-slate-400 mb-1">Branch Name</label>
+              <input
+                type="text"
+                v-model="currentBranch.clinicBranch"
+                placeholder="Enter branch name"
+                class="w-full px-3 py-2 rounded-lg bg-slate-700 text-white border border-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            
+            <div>
+              <label class="block text-slate-400 mb-1">Location</label>
+              <input
+                type="text"
+                v-model="currentBranch.clinicLocation"
+                placeholder="Enter location"
+                class="w-full px-3 py-2 rounded-lg bg-slate-700 text-white border border-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+
+            <div>
+              <label class="block text-slate-400 mb-1">Revenue</label>
+              <input
+                type="number"
+                v-model="currentBranch.revenue"
+                placeholder="Revenue"
+                class="w-full px-3 py-2 rounded-lg bg-slate-700 text-white border border-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+
+            <div>
+              <label class="block text-slate-400 mb-1">Status</label>
+              <select
+                v-model="currentBranch.status"
+                class="w-full px-3 py-2 rounded-lg bg-slate-700 text-white border border-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option>Active</option>
+                <option>Inactive</option>
+              </select>
+            </div>
+          </form>
+        </template>
+
+        <template #footer>
+          <div class="flex flex-col sm:flex-row justify-end sm:space-x-2 space-y-2 sm:space-y-0">
+            <button @click="showEditModal = false" class="bg-slate-600 hover:bg-slate-700 text-white px-4 py-2 rounded transition">
+              Cancel
+            </button>
+            <button @click="saveBranch" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded transition">
+              Update
             </button>
           </div>
         </template>

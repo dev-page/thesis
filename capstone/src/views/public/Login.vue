@@ -69,7 +69,7 @@ const handleLogin = async () => {
         const role = userSnap.data().role || 'Customer'
         const redirectPath = roleRoutes[role] || '/dashboard'
 
-        toast.success('Login successful! Redirecting to ${role} Dashboard')
+        toast.success(`Login successful! Redirecting to ${role} Dashboard`)
         clearFormFields()
         setTimeout(() => {
           router.push(redirectPath)
