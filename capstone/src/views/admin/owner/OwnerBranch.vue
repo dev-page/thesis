@@ -51,7 +51,6 @@ export default {
         const branchRef = doc(db, "clinics", currentBranch.value.id);
         await updateDoc(branchRef, {
           clinicBranch: currentBranch.value.name.trim(),
-          employees: currentBranch.value.employees,
           revenue: currentBranch.value.revenue,
           status: currentBranch.value.status
         });
@@ -61,7 +60,6 @@ export default {
       } else {
         const docRef = await addDoc(collection(db, "clinics"), {
           clinicBranch: currentBranch.value.name.trim(),
-          employees: currentBranch.value.employees,
           revenue: currentBranch.value.revenue,
           status: currentBranch.value.status
         });
@@ -71,6 +69,14 @@ export default {
       showModal.value = false
     }
 
+    const toggleStatus = async (branch) => {
+      const newStatus = branch.status === 'Active' ? 'Inactive' : 'Active'
+      const branchRef = doc(db, "clinics", branch.id)
+      await updateDoc(branchRef, { status: newStatus })
+      branch.status = newStatus
+      toast.success(`Branch status updated to ${newStatus}`)
+    }
+
     return {
       branches,
       showModal,
@@ -78,7 +84,8 @@ export default {
       openAddModal,
       openEditModal,
       deleteBranch,
-      saveBranch
+      saveBranch,
+      toggleStatus
     }
   }
 }
@@ -109,9 +116,9 @@ export default {
           <thead>
             <tr class="text-slate-400 uppercase text-xs sm:text-sm border-b border-slate-700">
               <th class="py-2 px-2 sm:py-3 sm:px-4">Branch Name</th>
-              <th class="py-2 px-2 sm:py-3 sm:px-4">Employees</th>
               <th class="py-2 px-2 sm:py-3 sm:px-4">Revenue</th>
               <th class="py-2 px-2 sm:py-3 sm:px-4">Status</th>
+              <th class="py-2 px-2 sm:py-3 sm:px-4">Set</th>
               <th class="py-2 px-2 sm:py-3 sm:px-4">Actions</th>
             </tr>
           </thead>
@@ -122,7 +129,6 @@ export default {
               class="hover:bg-slate-700 transition-colors"
             >
               <td class="py-2 px-2 sm:py-3 sm:px-4 font-medium">{{ branch.clinicBranch }}</td>
-              <td class="py-2 px-2 sm:py-3 sm:px-4">{{ branch.employees }}</td>
               <td class="py-2 px-2 sm:py-3 sm:px-4">${{ branch.revenue ? branch.revenue.toLocaleString() : 0 }}</td>
               <td class="py-2 px-2 sm:py-3 sm:px-4">
                 <span
@@ -135,6 +141,14 @@ export default {
                 >
                   {{ branch.status }}
                 </span>
+              </td>
+              <td class="py-2 px-2 sm:py-3 sm:px-4">
+                <button @click="toggleStatus(branch)" :class="['px-3 py-1 rounded-full text-xs sm:text-sm font-medium transition',
+                  branch.status === 'Active' 
+                  ? 'bg-red-600 hover:bg-red-700 text-white' 
+                  : 'bg-green-600 hover:bg-green-700 text-white']">
+                  {{ branch.status === 'Active' ? 'Deactivate' : 'Activate' }}
+                </button>
               </td>
               <td class="py-2 px-2 sm:py-3 sm:px-4 flex flex-wrap gap-2">
                 <button
@@ -176,16 +190,6 @@ export default {
             </div>
 
             <div>
-              <label class="block text-slate-400 mb-1">Employees</label>
-              <input
-                type="number"
-                v-model="currentBranch.employees"
-                placeholder="Number of employees"
-                class="w-full px-3 py-2 rounded-lg bg-slate-700 text-white border border-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-
-            <div>
               <label class="block text-slate-400 mb-1">Revenue</label>
               <input
                 type="number"
@@ -202,7 +206,7 @@ export default {
                 class="w-full px-3 py-2 rounded-lg bg-slate-700 text-white border border-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option>Active</option>
-                <option>Under Review</option>
+                <option>Inactive</option>
               </select>
             </div>
           </form>
