@@ -90,7 +90,7 @@ export default {
         <ul class="space-y-2">
           <li>
             <router-link
-              to="/owner/dashboard"
+              to="/owners/dashboard"
               class="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-300 hover:bg-rose-600 hover:text-gold-50 transition-colors"
               exact-active-class="bg-gold-700 text-slate-50 hover:bg-gold-800"
             >
@@ -104,7 +104,7 @@ export default {
 
           <li>
             <router-link
-              to="/owner/branch"
+              to="/owners/branch"
               class="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-300 hover:bg-rose-600 hover:text-gold-50 transition-colors"
               exact-active-class="bg-gold-700 text-slate-50 hover:bg-gold-800"
             >
@@ -118,7 +118,7 @@ export default {
 
           <li>
             <router-link
-              to="/owner/staff"
+              to="/owners/staff"
               class="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-300 hover:bg-rose-600 hover:text-gold-50 transition-colors"
               exact-active-class="bg-gold-700 text-slate-50 hover:bg-gold-800"
             >
@@ -137,7 +137,7 @@ export default {
 
           <li>
             <router-link
-              to="/owner/finance"
+              to="/owners/finance"
               class="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-300 hover:bg-rose-600 hover:text-gold-50 transition-colors"
               exact-active-class="bg-gold-700 text-slate-50 hover:bg-gold-800"
             >
@@ -156,7 +156,7 @@ export default {
 
           <li>
             <router-link
-              to="/owner/clinic-profile"
+              to="/owners/clinic-profile"
               class="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-300 hover:bg-rose-600 hover:text-gold-50 transition-colors"
               exact-active-class="bg-gold-700 text-slate-50 hover:bg-gold-800"
             >
@@ -170,7 +170,7 @@ export default {
 
           <li>
             <router-link
-              to="/owner/reports"
+              to="/owners/reports"
               class="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-300 hover:bg-rose-600 hover:text-gold-50 transition-colors"
               exact-active-class="bg-gold-700 text-slate-50 hover:bg-gold-800"
             >

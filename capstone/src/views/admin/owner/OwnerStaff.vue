@@ -1,121 +1,245 @@
+
 <script>
-import { ref, onMounted } from 'vue'
-import { getFirestore, collection, getDocs, addDoc, updateDoc, doc, deleteDoc } from 'firebase/firestore'
+import { ref, onMounted, computed } from 'vue'
+import { getFirestore, collection, getDocs, updateDoc, doc, deleteDoc, setDoc } from 'firebase/firestore'
 import { getApp } from 'firebase/app'
+import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth'
 import OwnerSidebar from '@/components/sidebar/OwnerSidebar.vue'
 import Modal from '@/components/common/Modal.vue'
 import { toast } from 'vue3-toastify'
+import Swal from 'sweetalert2'
 
 export default {
   name: 'OwnerStaff',
   components: { OwnerSidebar, Modal },
   setup() {
     const db = getFirestore(getApp())
+    const auth = getAuth(getApp())
     const staffList = ref([])
-
-    // Static branch list - replace with dynamic data from Firestore if needed
-    const branches = ref([
-      'Downtown Clinic',
-      'Uptown Clinic',
-      'Westside Clinic',
-      'Eastside Clinic'
-    ])
+    const branches = ref([])
 
     // Modal state
-    const showModal = ref(false)
+    const showAddModal = ref(false)
+    const showEditModal = ref(false)
+
     const currentStaff = ref({
       id: null,
       name: '',
       email: '',
       role: '',
-      level: 'Branch',
-      branch: ''
+      userType: 'Staff',
+      level: '',
+      branch: '',
+      status: 'Active'
     })
+    
+    const officeRoles = ['HR', 'CRM', 'Supply', 'Finance'];
+    const branchRoles = ['Manager','Cashier', 'Practitioner'];
+
+    const filteredRoles = computed(() => {
+      if (currentStaff.value.level === 'Office') return officeRoles;
+      if (currentStaff.value.level === 'Branch') return branchRoles;
+      return [];
+    });
     
     // Load staff data from Firestore
     const loadStaff = async () => {
-      const snapshot = await getDocs(collection(db, "staff"));
-      staffList.value = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+      const snapshot = await getDocs(collection(db, "users"));
+      staffList.value = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })).filter((user) => user.userType === 'Staff');
     }
 
-    onMounted(loadStaff)
+    const loadBranches = async () => {
+      const snapshot = await getDocs(collection(db, "clinics"));
+      branches.value = snapshot.docs.map((doc) => doc.data().clinicBranch);
+    }
 
-    // Open Add Staff Modal
+    onMounted(() => {
+      loadStaff()
+      loadBranches()
+    })
+
     const openAddModal = () => {
       currentStaff.value = {
         id: null,
         name: '',
         email: '',
         role: '',
-        level: 'Branch',
-        branch: ''
+        userType: 'Staff',
+        level: '',
+        branch: '',
+        status: 'Active'
       }
-      showModal.value = true
+      showAddModal.value = true
     }
 
-    // Open Edit Staff Modal
     const openEditModal = (staff) => {
       currentStaff.value = { ...staff }
-      showModal.value = true
+      showEditModal.value = true
     }
 
-    // Delete Staff
-    const deleteStaff = async (id) => {
-      if (confirm('Are you sure you want to delete this staff member?')) {
-        await deleteDoc(doc(db, "staff", id));
-        staffList.value = staffList.value.filter((s) => s.id !== id)
-        toast.success('Staff member deleted successfully!')
+    const deactivateStaff = async (staff) => {
+      const result = await Swal.fire({
+        title: 'Confirm Deactivation',
+        text: `Are you sure you want to deactivate ${staff.name}? They will not be able to log in.`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: 'Yes, deactivate',
+        cancelButtonText: 'Cancel'
+      });
+
+      if (!result.isConfirmed) {
+        toast.info("Deactivation cancelled.");
+        return;
       }
-    }
 
-    // Save Staff (Add/Edit)
+      try {
+        const staffRef = doc(db, "users", staff.id);
+        await updateDoc(staffRef, { status: 'Inactive' });
+        staff.status = 'Inactive';
+        toast.success(`${staff.name} has been deactivated and cannot log in.`);
+      } catch (error) {
+        console.error(error);
+        toast.error("Failed to deactivate staff.");
+      }
+    };
+
+    const deleteStaff = async (staff) => {
+      if (!staff?.id) {
+        toast.error("Invalid staff record.");
+        return;
+      }
+
+      const result = await Swal.fire({
+        title: 'Confirm Delete',
+        text: `You are about to delete ${staff.name}. This action cannot be undone.`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: 'Yes, delete',
+        cancelButtonText: 'Cancel'
+      });
+
+      if (!result.isConfirmed) {
+        toast.info("Deletion cancelled.");
+        return;
+      }
+
+      try {
+        await deleteDoc(doc(db, "users", staff.id));
+        staffList.value = staffList.value.filter((s) => s.id !== staff.id);
+        toast.success(`${staff.name} has been deleted successfully.`);
+      } catch (error) {
+        console.error("Error deleting staff:", error);
+        toast.error("Failed to delete staff. Please try again.");
+      }
+    };
     const saveStaff = async () => {
       if (!currentStaff.value.name.trim() || !currentStaff.value.email.trim() || !currentStaff.value.role.trim()) {
-        toast.error('Name, email, and role are required.')
-        return
+        toast.error('Name, email, and role are required.');
+        return;
+      }
+      try {
+        if (currentStaff.value.id) {
+          // 🔹 Update existing staff with confirmation
+          const result = await Swal.fire({
+            title: 'Confirm Update',
+            text: `Do you want to update ${currentStaff.value.name}'s information?`,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#3085d6',
+            cancelButtonColor: '#aaa',
+            confirmButtonText: 'Yes, update',
+            cancelButtonText: 'Cancel'
+          });
+
+          if (!result.isConfirmed) {
+            toast.info("Update cancelled.");
+            return;
+          }
+
+          const staffRef = doc(db, "users", currentStaff.value.id);
+          await setDoc(staffRef, {
+            name: currentStaff.value.name,
+            email: currentStaff.value.email,
+            role: currentStaff.value.role,
+            userType: 'Staff',
+            level: currentStaff.value.level,
+            branch: currentStaff.value.branch || null,
+            status: currentStaff.value.status ?? "Active"
+          }, { merge: true });
+          toast.success('Staff member updated successfully!');
+        } else {
+          // 🔹 Create new staff with confirmation
+          const result = await Swal.fire({
+            title: 'Confirm Staff Creation',
+            text: `Do you want to create an account for ${currentStaff.value.name} (${currentStaff.value.email})?`,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#3085d6',
+            cancelButtonColor: '#aaa',
+            confirmButtonText: 'Yes, create',
+            cancelButtonText: 'Cancel'
+          });
+
+          if (!result.isConfirmed) {
+            toast.info("Staff creation cancelled.");
+            return;
+          }
+
+          const defaultPassword = 'password123';
+          let userCredential;
+          try {
+            userCredential = await createUserWithEmailAndPassword(auth, currentStaff.value.email, defaultPassword);
+          } catch (error) {
+            if (error.code === 'auth/email-already-in-use') {
+              toast.error("This email is already registered.");
+              return;
+            } else {
+              toast.error("Failed to create staff account.");
+              console.error(error);
+              return;
+            }
+          }
+
+          const uid = userCredential.user.uid;
+          await setDoc(doc(db, "users", uid), {
+            name: currentStaff.value.name,
+            email: currentStaff.value.email,
+            role: currentStaff.value.role,
+            userType: 'Staff',
+            level: currentStaff.value.level,
+            branch: currentStaff.value.branch || null,
+            status: currentStaff.value.status ?? "Active",
+            createdAt: new Date()
+          });
+
+          staffList.value.push({ ...currentStaff.value, id: uid, userType: 'Staff', status: "Active" });
+          toast.success('Staff member added successfully!');
+        }
+      } catch (err) {
+        console.error(err);
+        toast.error("Unexpected error while saving staff.");
       }
 
-      if (currentStaff.value.level === 'Branch' && !currentStaff.value.branch) {
-        toast.error('Branch is required for branch-level staff.')
-        return
-      }
-
-      if (currentStaff.value.id) {
-        const staffRef = doc(db, "staff", currentStaff.value.id)
-        await updateDoc(staffRef, {
-          name: currentStaff.value.name,
-          email: currentStaff.value.email,
-          role: currentStaff.value.role,
-          level: currentStaff.value.level,
-          branch: currentStaff.value.branch
-        })
-        const index = staffList.value.findIndex((s) => s.id === currentStaff.value.id)
-        if (index !== -1) staffList.value[index] = { ...currentStaff.value }
-        toast.success('Staff member updated successfully!')
-      } else {
-        await addDoc(collection(db, "staff"), {
-          name: currentStaff.value.name,
-          email: currentStaff.value.email,
-          role: currentStaff.value.role,
-          level: currentStaff.value.level,
-          branch: currentStaff.value.branch
-        })
-        staffList.value.push({ ...currentStaff.value, id: Date.now().toString() })
-        toast.success('Staff member added successfully!')
-      }
-
-      showModal.value = false
-    }
+      showAddModal.value = false;
+      showEditModal.value = false;
+    };
 
     return {
       staffList,
       branches,
-      showModal,
+      showAddModal,
+      showEditModal,
       currentStaff,
       openAddModal,
       openEditModal,
+      deactivateStaff,
       deleteStaff,
-      saveStaff
+      saveStaff,
+      filteredRoles
     }
   }
 }
@@ -150,6 +274,7 @@ export default {
               <th class="py-2 px-2 sm:py-3 sm:px-4">Role</th>
               <th class="py-2 px-2 sm:py-3 sm:px-4">Level</th>
               <th class="py-2 px-2 sm:py-3 sm:px-4">Branch</th>
+              <th class="py-2 px-2 sm:py-3 sm:px-4">Status</th>
               <th class="py-2 px-2 sm:py-3 sm:px-4">Actions</th>
             </tr>
           </thead>
@@ -164,6 +289,11 @@ export default {
               <td class="py-2 px-2 sm:py-3 sm:px-4">{{ staff.role }}</td>
               <td class="py-2 px-2 sm:py-3 sm:px-4">{{ staff.level }}</td>
               <td class="py-2 px-2 sm:py-3 sm:px-4">{{ staff.level === 'Branch' ? staff.branch : '-' }}</td>
+              <td class="py-2 px-2 sm:py-3 sm:px-4">
+                <span :class="staff.status === 'Active' ? 'text-green-400' : 'text-red-400'">
+                  {{ staff.status }}
+              </span>
+              </td>
               <td class="py-2 px-2 sm:py-3 sm:px-4 flex flex-wrap gap-2">
                 <button
                   @click="openEditModal(staff)"
@@ -172,7 +302,14 @@ export default {
                   Edit
                 </button>
                 <button
-                  @click="deleteStaff(staff.id)"
+                  @click="deactivateStaff(staff)"
+                  class="bg-orange-600 hover:bg-red-700 text-white px-3 py-1 rounded transition flex-1 sm:flex-none"
+                  v-if="staff.status === 'Active'"
+                  >
+                  Deactivate
+                </button>
+                <button
+                  @click="deleteStaff(staff)"
                   class="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded transition flex-1 sm:flex-none"
                 >
                   Delete
@@ -183,12 +320,10 @@ export default {
         </table>
       </div>
 
-      <!-- Modal -->
-      <Modal :isOpen="showModal" panelClass="bg-slate-800 text-white w-full max-w-md" @close="showModal = false">
+      <!-- Add Modal -->
+      <Modal :isOpen="showAddModal" panelClass="bg-slate-800 text-white w-full max-w-md" @close="showAddModal = false">
         <template #header>
-          <h2 class="text-xl font-semibold text-white">
-            {{ currentStaff.id ? 'Edit Staff' : 'Add Staff' }}
-          </h2>
+          <h2 class="text-xl font-semibold text-white">Add Staff</h2>
         </template>
 
         <template #body>
@@ -214,21 +349,12 @@ export default {
             </div>
 
             <div>
-              <label class="block text-slate-400 mb-1">Role</label>
-              <input
-                type="text"
-                v-model="currentStaff.role"
-                placeholder="Enter role (e.g., Nurse, Manager)"
-                class="w-full px-3 py-2 rounded-lg bg-slate-700 text-white border border-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-
-            <div>
               <label class="block text-slate-400 mb-1">Level</label>
               <select
                 v-model="currentStaff.level"
                 class="w-full px-3 py-2 rounded-lg bg-slate-700 text-white border border-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
+                <option disabled value="">Select level</option>
                 <option>Branch</option>
                 <option>Office</option>
               </select>
@@ -240,8 +366,21 @@ export default {
                 v-model="currentStaff.branch"
                 class="w-full px-3 py-2 rounded-lg bg-slate-700 text-white border border-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                <option value="" disabled>Select branch</option>
+                <option disabled value="">Select branch</option>
                 <option v-for="b in branches" :key="b">{{ b }}</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="block text-slate-400 mb-1">Role</label>
+              <select
+                v-model="currentStaff.role"
+                class="w-full px-3 py-2 rounded-lg bg-slate-700 text-white border border-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option disabled value="">Select role</option>
+                <option v-for="role in filteredRoles" :key="role" :value="role">
+                  {{ role }}
+                </option>
               </select>
             </div>
           </form>
@@ -250,7 +389,7 @@ export default {
         <template #footer>
           <div class="flex flex-col sm:flex-row justify-end sm:space-x-2 space-y-2 sm:space-y-0">
             <button
-              @click="showModal = false"
+              @click="showAddModal = false"
               class="bg-slate-600 hover:bg-slate-700 text-white px-4 py-2 rounded transition"
             >
               Cancel
@@ -259,7 +398,102 @@ export default {
               @click="saveStaff"
               class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded transition"
             >
-              {{ currentStaff.id ? 'Update' : 'Add' }}
+              Add
+            </button>
+          </div>
+        </template>
+      </Modal>
+
+      <!-- Edit Modal -->
+      <Modal :isOpen="showEditModal" panelClass="bg-slate-800 text-white w-full max-w-md" @close="showEditModal = false">
+        <template #header>
+          <h2 class="text-xl font-semibold text-white">Edit Staff</h2>
+        </template>
+
+        <template #body>
+          <form class="space-y-4">
+            <div>
+              <label class="block text-slate-400 mb-1">Full Name</label>
+              <input
+                type="text"
+                v-model="currentStaff.name"
+                placeholder="Enter full name"
+                class="w-full px-3 py-2 rounded-lg bg-slate-700 text-white border border-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+
+            <div>
+              <label class="block text-slate-400 mb-1">Email</label>
+              <input
+                type="email"
+                v-model="currentStaff.email"
+                placeholder="Enter email"
+                class="w-full px-3 py-2 rounded-lg bg-slate-700 text-white border border-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+
+            <div>
+              <label class="block text-slate-400 mb-1">Level</label>
+              <select
+                v-model="currentStaff.level"
+                class="w-full px-3 py-2 rounded-lg bg-slate-700 text-white border border-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option disabled value="">Select level</option>
+                <option>Branch</option>
+                <option>Office</option>
+              </select>
+            </div>
+
+            <div v-if="currentStaff.level === 'Branch'">
+              <label class="block text-slate-400 mb-1">Branch</label>
+              <select
+                v-model="currentStaff.branch"
+                class="w-full px-3 py-2 rounded-lg bg-slate-700 text-white border border-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option disabled value="">Select branch</option>
+                <option v-for="b in branches" :key="b">{{ b }}</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="block text-slate-400 mb-1">Role</label>
+              <select
+                v-model="currentStaff.role"
+                class="w-full px-3 py-2 rounded-lg bg-slate-700 text-white border border-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option disabled value="">Select role</option>
+                <option v-for="role in filteredRoles" :key="role" :value="role">
+                  {{ role }}
+                </option>
+              </select>
+            </div>
+
+            <div>
+              <label class="block text-slate-400 mb-1">Status</label>
+              <select
+                v-model="currentStaff.status"
+                class="w-full px-3 py-2 rounded-lg bg-slate-700 text-white border border-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="Active">Active</option>
+                <option value="Inactive">Inactive</option>
+              </select>
+            </div>
+          </form>
+        </template>
+
+        <template #footer>
+          <div class="flex flex-col sm:flex-row justify-end sm:space-x-2 space-y-2 sm:space-y-0">
+            <button
+              @click="showEditModal = false"
+              class="bg-slate-600 hover:bg-slate-700 text-white px-4 py-2 rounded transition"
+            >
+              Cancel
+            </button>
+            <button
+              @click="saveStaff"
+              class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded transition"
+            >
+              Update
             </button>
           </div>
         </template>

@@ -146,6 +146,14 @@ const registerClinic = async () => {
       createdAt: serverTimestamp(),
     })
 
+    await setDoc(doc(db, 'clinics', uid), {
+      clinicName: clinicName.value,
+      clinicLocation: clinicLocation.value,
+      contactNumber: contactNumber.value,
+      ownerId: uid,
+      createdAt: serverTimestamp(),
+    })
+
     generatedOtp.value = generateOtp()
     await sendOtpEmail(email.value, generatedOtp.value)
 
