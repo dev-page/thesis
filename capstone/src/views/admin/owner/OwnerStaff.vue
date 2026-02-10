@@ -1,11 +1,13 @@
+
 <script>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { getFirestore, collection, getDocs, updateDoc, doc, deleteDoc, setDoc } from 'firebase/firestore'
 import { getApp } from 'firebase/app'
 import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth'
 import OwnerSidebar from '@/components/sidebar/OwnerSidebar.vue'
 import Modal from '@/components/common/Modal.vue'
 import { toast } from 'vue3-toastify'
+import Swal from 'sweetalert2'
 
 export default {
   name: 'OwnerStaff',
@@ -31,6 +33,15 @@ export default {
       status: 'Active'
     })
     
+    const officeRoles = ['HR', 'CRM', 'Supply', 'Finance'];
+    const branchRoles = ['Manager','Cashier', 'Practitioner'];
+
+    const filteredRoles = computed(() => {
+      if (currentStaff.value.level === 'Office') return officeRoles;
+      if (currentStaff.value.level === 'Branch') return branchRoles;
+      return [];
+    });
+    
     // Load staff data from Firestore
     const loadStaff = async () => {
       const snapshot = await getDocs(collection(db, "users"));
@@ -47,7 +58,6 @@ export default {
       loadBranches()
     })
 
-    // Open Add Staff Modal
     const openAddModal = () => {
       currentStaff.value = {
         id: null,
@@ -56,92 +66,167 @@ export default {
         role: '',
         userType: 'Staff',
         level: '',
-        branch: ''
+        branch: '',
+        status: 'Active'
       }
       showAddModal.value = true
     }
 
-    // Open Edit Staff Modal
     const openEditModal = (staff) => {
       currentStaff.value = { ...staff }
       showEditModal.value = true
     }
 
     const deactivateStaff = async (staff) => {
-      if (confirm('Are you sure you want to deactivate this staff member?')) {
-        const staffRef = doc(db, "users", staff.id)
-        await updateDoc(staffRef, { status: 'Inactive' })
-        staff.status = 'Inactive'
-        toast.success(`${staff.name} has been deactivated and cannot log in.`)
-      }
-    }
+      const result = await Swal.fire({
+        title: 'Confirm Deactivation',
+        text: `Are you sure you want to deactivate ${staff.name}? They will not be able to log in.`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: 'Yes, deactivate',
+        cancelButtonText: 'Cancel'
+      });
 
-    // Delete Staff
+      if (!result.isConfirmed) {
+        toast.info("Deactivation cancelled.");
+        return;
+      }
+
+      try {
+        const staffRef = doc(db, "users", staff.id);
+        await updateDoc(staffRef, { status: 'Inactive' });
+        staff.status = 'Inactive';
+        toast.success(`${staff.name} has been deactivated and cannot log in.`);
+      } catch (error) {
+        console.error(error);
+        toast.error("Failed to deactivate staff.");
+      }
+    };
+
     const deleteStaff = async (staff) => {
-      if (confirm('Are you sure you want to delete this staff member?')) {
-        await deleteDoc(doc(db, "users", staff.id));
-        staffList.value = staffList.value.filter((s) => s.id !== staff.id)
-        toast.success('Staff member deleted successfully!')
+      if (!staff?.id) {
+        toast.error("Invalid staff record.");
+        return;
       }
-    }
 
-    // Save Staff (Add/Edit)
+      const result = await Swal.fire({
+        title: 'Confirm Delete',
+        text: `You are about to delete ${staff.name}. This action cannot be undone.`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: 'Yes, delete',
+        cancelButtonText: 'Cancel'
+      });
+
+      if (!result.isConfirmed) {
+        toast.info("Deletion cancelled.");
+        return;
+      }
+
+      try {
+        await deleteDoc(doc(db, "users", staff.id));
+        staffList.value = staffList.value.filter((s) => s.id !== staff.id);
+        toast.success(`${staff.name} has been deleted successfully.`);
+      } catch (error) {
+        console.error("Error deleting staff:", error);
+        toast.error("Failed to delete staff. Please try again.");
+      }
+    };
     const saveStaff = async () => {
       if (!currentStaff.value.name.trim() || !currentStaff.value.email.trim() || !currentStaff.value.role.trim()) {
-        toast.error('Name, email, and role are required.')
-        return
+        toast.error('Name, email, and role are required.');
+        return;
+      }
+      try {
+        if (currentStaff.value.id) {
+          // 🔹 Update existing staff with confirmation
+          const result = await Swal.fire({
+            title: 'Confirm Update',
+            text: `Do you want to update ${currentStaff.value.name}'s information?`,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#3085d6',
+            cancelButtonColor: '#aaa',
+            confirmButtonText: 'Yes, update',
+            cancelButtonText: 'Cancel'
+          });
+
+          if (!result.isConfirmed) {
+            toast.info("Update cancelled.");
+            return;
+          }
+
+          const staffRef = doc(db, "users", currentStaff.value.id);
+          await setDoc(staffRef, {
+            name: currentStaff.value.name,
+            email: currentStaff.value.email,
+            role: currentStaff.value.role,
+            userType: 'Staff',
+            level: currentStaff.value.level,
+            branch: currentStaff.value.branch || null,
+            status: currentStaff.value.status ?? "Active"
+          }, { merge: true });
+          toast.success('Staff member updated successfully!');
+        } else {
+          // 🔹 Create new staff with confirmation
+          const result = await Swal.fire({
+            title: 'Confirm Staff Creation',
+            text: `Do you want to create an account for ${currentStaff.value.name} (${currentStaff.value.email})?`,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#3085d6',
+            cancelButtonColor: '#aaa',
+            confirmButtonText: 'Yes, create',
+            cancelButtonText: 'Cancel'
+          });
+
+          if (!result.isConfirmed) {
+            toast.info("Staff creation cancelled.");
+            return;
+          }
+
+          const defaultPassword = 'password123';
+          let userCredential;
+          try {
+            userCredential = await createUserWithEmailAndPassword(auth, currentStaff.value.email, defaultPassword);
+          } catch (error) {
+            if (error.code === 'auth/email-already-in-use') {
+              toast.error("This email is already registered.");
+              return;
+            } else {
+              toast.error("Failed to create staff account.");
+              console.error(error);
+              return;
+            }
+          }
+
+          const uid = userCredential.user.uid;
+          await setDoc(doc(db, "users", uid), {
+            name: currentStaff.value.name,
+            email: currentStaff.value.email,
+            role: currentStaff.value.role,
+            userType: 'Staff',
+            level: currentStaff.value.level,
+            branch: currentStaff.value.branch || null,
+            status: currentStaff.value.status ?? "Active",
+            createdAt: new Date()
+          });
+
+          staffList.value.push({ ...currentStaff.value, id: uid, userType: 'Staff', status: "Active" });
+          toast.success('Staff member added successfully!');
+        }
+      } catch (err) {
+        console.error(err);
+        toast.error("Unexpected error while saving staff.");
       }
 
-      const officeRoles = ['HR', 'CRM', 'Supply', 'Finance']
-      const branchRoles = ['Cashier', 'Practitioner']
-
-      if (officeRoles.includes(currentStaff.value.role)) {
-        currentStaff.value.level = "Office"
-      } else if (branchRoles.includes(currentStaff.value.role)) {
-        currentStaff.value.level = "Branch"
-      } else {
-        currentStaff.value.level = "Other"
-      } 
-
-      if (currentStaff.value.level === 'Branch' && !currentStaff.value.branch) {
-        toast.error('Branch is required for branch-level staff.')
-        return
-      }
-
-      if (currentStaff.value.id) {
-        const staffRef = doc(db, "users", currentStaff.value.id)
-        await setDoc(staffRef, {
-          name: currentStaff.value.name,
-          email: currentStaff.value.email,
-          role: currentStaff.value.role,
-          userType: 'Staff',
-          level: currentStaff.value.level,
-          branch: currentStaff.value.branch,
-          status: currentStaff.value.status
-        }, { merge: true })
-        toast.success('Staff member updated successfully!')
-      } else {
-        const defaultPassword = 'password123'
-        const userCredential = await createUserWithEmailAndPassword(auth, currentStaff.value.email, defaultPassword) // In production, generate a secure random password and email it to the staff member
-        const uid = userCredential.user.uid
-
-        await setDoc(doc(db, "users", uid), {
-          name: currentStaff.value.name,
-          email: currentStaff.value.email,
-          role: currentStaff.value.role,
-          userType: 'Staff',
-          level: currentStaff.value.level,
-          branch: currentStaff.value.branch,
-          status: currentStaff.value.status,
-          createdAt: new Date()
-        })
-        staffList.value.push({ ...currentStaff.value, id: uid, userType: 'Staff', status: 'Active' })
-        toast.success('Staff member added successfully!')
-      }
-
-      showAddModal.value = false
-      showEditModal.value = false
-    }
+      showAddModal.value = false;
+      showEditModal.value = false;
+    };
 
     return {
       staffList,
@@ -153,7 +238,8 @@ export default {
       openEditModal,
       deactivateStaff,
       deleteStaff,
-      saveStaff
+      saveStaff,
+      filteredRoles
     }
   }
 }
@@ -263,21 +349,12 @@ export default {
             </div>
 
             <div>
-              <label class="block text-slate-400 mb-1">Role</label>
-              <input
-                type="text"
-                v-model="currentStaff.role"
-                placeholder="Enter role (e.g., HR, Cashier)"
-                class="w-full px-3 py-2 rounded-lg bg-slate-700 text-white border border-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-
-            <div>
               <label class="block text-slate-400 mb-1">Level</label>
               <select
                 v-model="currentStaff.level"
                 class="w-full px-3 py-2 rounded-lg bg-slate-700 text-white border border-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
+                <option disabled value="">Select level</option>
                 <option>Branch</option>
                 <option>Office</option>
               </select>
@@ -289,8 +366,21 @@ export default {
                 v-model="currentStaff.branch"
                 class="w-full px-3 py-2 rounded-lg bg-slate-700 text-white border border-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                <option value="" disabled>Select branch</option>
+                <option disabled value="">Select branch</option>
                 <option v-for="b in branches" :key="b">{{ b }}</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="block text-slate-400 mb-1">Role</label>
+              <select
+                v-model="currentStaff.role"
+                class="w-full px-3 py-2 rounded-lg bg-slate-700 text-white border border-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option disabled value="">Select role</option>
+                <option v-for="role in filteredRoles" :key="role" :value="role">
+                  {{ role }}
+                </option>
               </select>
             </div>
           </form>
@@ -343,21 +433,12 @@ export default {
             </div>
 
             <div>
-              <label class="block text-slate-400 mb-1">Role</label>
-              <input
-                type="text"
-                v-model="currentStaff.role"
-                placeholder="Enter role (e.g., HR, Cashier)"
-                class="w-full px-3 py-2 rounded-lg bg-slate-700 text-white border border-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-
-            <div>
               <label class="block text-slate-400 mb-1">Level</label>
               <select
                 v-model="currentStaff.level"
                 class="w-full px-3 py-2 rounded-lg bg-slate-700 text-white border border-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
+                <option disabled value="">Select level</option>
                 <option>Branch</option>
                 <option>Office</option>
               </select>
@@ -369,8 +450,21 @@ export default {
                 v-model="currentStaff.branch"
                 class="w-full px-3 py-2 rounded-lg bg-slate-700 text-white border border-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                <option value="" disabled>Select branch</option>
+                <option disabled value="">Select branch</option>
                 <option v-for="b in branches" :key="b">{{ b }}</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="block text-slate-400 mb-1">Role</label>
+              <select
+                v-model="currentStaff.role"
+                class="w-full px-3 py-2 rounded-lg bg-slate-700 text-white border border-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option disabled value="">Select role</option>
+                <option v-for="role in filteredRoles" :key="role" :value="role">
+                  {{ role }}
+                </option>
               </select>
             </div>
 
