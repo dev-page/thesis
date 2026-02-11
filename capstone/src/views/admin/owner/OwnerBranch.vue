@@ -2,10 +2,10 @@
 import { ref, onMounted } from 'vue'
 import { getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, getDocs, serverTimestamp} from 'firebase/firestore'
 import { getApp } from 'firebase/app'
-import { getAuth } from 'firebase/auth'
 import OwnerSidebar from '@/components/sidebar/OwnerSidebar.vue'
 import Modal from '@/components/common/Modal.vue'
 import { toast } from 'vue3-toastify'
+import Swal from 'sweetalert2'
 
 export default {
   name: 'OwnerBranch',
@@ -13,7 +13,6 @@ export default {
   setup() {
     // Branch list
     const db = getFirestore(getApp());
-    const auth = getAuth(getApp());
     const branches = ref([]);
     const showAddModal = ref(false);
     const showEditModal = ref(false);
@@ -28,7 +27,7 @@ export default {
 
     const loadBranches = async () => {
       const snapshot = await getDocs(collection(db, "clinics"));
-      branches.value = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data(), }));
+      branches.value = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), }));
     };
 
     onMounted(loadBranches);
@@ -43,11 +42,76 @@ export default {
       showEditModal.value = true
     };
 
-    const deleteBranch = async (id) => {
-      if (confirm('Are you sure you want to delete this branch?')) {
+    const deactivateBranch = async (branch) => {
+      if (branch.status === 'Active') {
+        const result = await Swal.fire({
+          title: 'Confirm Deactivation',
+          text: `Are you sure you want to deactivate ${branch.clinicBranch}?`,
+          icon: 'warning',
+          showCancelButton: true,
+          confirmButtonColor: '#d33',
+          cancelButtonColor: '#3085d6',
+          confirmButtonText: 'Yes, deactivate',
+          cancelButtonText: 'Cancel'
+        });
+
+        if (!result.isConfirmed) {
+          toast.info("Deactivation cancelled.");
+          return;
+        }
+
+        try {
+          const branchRef = doc(db, "clinics", branch.id);
+          await updateDoc(branchRef, { status: 'Inactive' });
+          branch.status = 'Inactive';
+          toast.success(`${branch.clinicBranch} has been deactivated.`);
+        } catch (error) {
+          console.error(error);
+          toast.error("Failed to deactivate staff.");
+        }
+      } else {
+         try {
+          const branchRef = doc(db, "clinics", branch.id);
+          await updateDoc(branchRef, { status: 'Active' });
+          branch.status = 'Active';
+          toast.success(`${branch.clinicBranch} has been reactivated.`);
+          await loadStaff() // Refresh staff list to reflect changes
+        } catch (error) {
+          console.error(error);
+          toast.error("Failed to reactivate staff.");
+        }
+      }
+    };
+
+    const deleteBranch = async (branch) => {
+      if (!branch.id) {
+        toast.error('Invalid branch record')
+        return
+      }
+
+      const result = await Swal.fire({
+        title: 'Confirm Deletion',
+        text: `Are you sure you want to delete ${branch.clinicBranch}? This action cannot be undone.`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: 'Yes, delete it!'
+      })
+
+      if (!result.isConfirmed) {
+        toast.info('Deletion cancelled')
+        return
+      }
+
+      try {
         await deleteDoc(doc(db, "clinics", id));
-        branches.value = branches.value.filter((b) => b.id !== id)
+        branches.value = branches.value.filter((b) => b.id !== branch.id)
         toast.success('Branch deleted successfully.')
+        await loadBranches() // Refresh branch list to reflect changes
+      } catch (error) {
+        console.error("Error deleting branch:", error)
+        toast.error('Failed to delete branch. Please try again.')
       }
     };
 
@@ -57,72 +121,72 @@ export default {
         return
       }
 
-      if (!currentBranch.value.location.trim()) {
-        toast.error('Branch location is required')
-        return
-      }
+      try {
+        if (currentBranch.value.id) {
+          const result = await Swal.fire({
+            title: 'Confirm Update',
+            text: 'Are you sure you want to update this branch?',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#3085d6',
+            cancelButtonColor: '#aaa',
+            confirmButtonText: 'Yes, update!'
+          })
 
-      const user = auth.currentUser
-      const ownerId = user.uid
+          if (!result.isConfirmed) {
+            toast.info('Update cancelled')
+            return
+          }
 
-      if (currentBranch.value.id) {
-        const branchRef = doc(db, "clinics", currentBranch.value.id);
-        await updateDoc(branchRef, {
-          clinicBranch: currentBranch.value.name.trim(),
-          clinicLocation: currentBranch.value.location.trim(),
-          revenue: currentBranch.value.revenue,
-          status: currentBranch.value.status,
-          ownerId: ownerId
-        });
-        const index = branches.value.findIndex((b) => b.id === currentBranch.value.id);
-        if (index !== -1) {
-          branches.value[index] = { 
-            ...currentBranch.value, 
+          const branchRef = doc(db, "clinics", currentBranch.value.id);
+          await updateDoc(branchRef, {
             clinicBranch: currentBranch.value.name.trim(),
             clinicLocation: currentBranch.value.location.trim(),
-            ownerId: ownerId
+            revenue: currentBranch.value.revenue,
+            status: currentBranch.value.status,
+            ownerId: ownerId,
+            updatedAt: serverTimestamp()
+          });
+          toast.success('Branch updated successfully.')
+          await loadBranches() // Refresh branch list to reflect changes
+          } else {
+            const docRef = await addDoc(collection(db, "clinics"), {
+              clinicBranch: currentBranch.value.name.trim(),
+              clinicLocation: currentBranch.value.location.trim(),
+              revenue: currentBranch.value.revenue,
+              status: currentBranch.value.status,
+              ownerId: ownerId,
+              cratedAt: serverTimestamp()
+            });
+            branches.value.push({ 
+              id: docRef.id, 
+              ...currentBranch.value, 
+              clinicBranch: currentBranch.value.name.trim(),
+              clinicLocation: currentBranch.value.location.trim(),
+              ownerId: ownerId
+            })
+            toast.success('Branch added successfully.')
+            await loadBranches() // Refresh branch list to reflect changes
           }
+        } catch (error) {
+          console.error("Error saving branch:", error)
+          toast.error('Failed to save branch. Please try again.')
         }
-        toast.success('Branch updated successfully.')
-      } else {
-        const docRef = await addDoc(collection(db, "clinics"), {
-          clinicBranch: currentBranch.value.name.trim(),
-          clinicLocation: currentBranch.value.location.trim(),
-          revenue: currentBranch.value.revenue,
-          status: currentBranch.value.status,
-          ownerId: ownerId,
-          cratedAt: serverTimestamp()
-        });
-        branches.value.push({ 
-          id: docRef.id, 
-          ...currentBranch.value, 
-          clinicBranch: currentBranch.value.name.trim(),
-          clinicLocation: currentBranch.value.location.trim(),
-          ownerId: ownerId
-        })
-        toast.success('Branch added successfully.')
-      }
-      showModal.value = false
-    }
 
-    const toggleStatus = async (branch) => {
-      const newStatus = branch.status === 'Active' ? 'Inactive' : 'Active'
-      const branchRef = doc(db, "clinics", branch.id)
-      await updateDoc(branchRef, { status: newStatus })
-      branch.status = newStatus
-      toast.success(`Branch status updated to ${newStatus}`)
-    }
+        showAddModal.value = false
+        showEditModal.value = false
+      }
 
     return {
       branches,
       showAddModal,
       showEditModal,
       currentBranch,
+      deactivateBranch,
       openAddModal,
       openEditModal,
       deleteBranch,
       saveBranch,
-      toggleStatus
     }
   }
 }
@@ -155,7 +219,6 @@ export default {
               <th class="py-2 px-2 sm:py-3 sm:px-4">Branch Name</th>
               <th class="py-2 px-2 sm:py-3 sm:px-4">Revenue</th>
               <th class="py-2 px-2 sm:py-3 sm:px-4">Status</th>
-              <th class="py-2 px-2 sm:py-3 sm:px-4">Set</th>
               <th class="py-2 px-2 sm:py-3 sm:px-4">Actions</th>
             </tr>
           </thead>
@@ -169,8 +232,9 @@ export default {
               <td class="py-2 px-2 sm:py-3 sm:px-4">${{ branch.revenue ? branch.revenue.toLocaleString() : 0 }}</td>
               <td class="py-2 px-2 sm:py-3 sm:px-4">
                 <span
+                @click="deactivateBranch(branch)"
                   :class="[
-                    'px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-medium',
+                    'px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-medium cursor-pointer',
                     branch.status === 'Active'
                       ? 'bg-green-500/20 text-green-400'
                       : 'bg-yellow-500/20 text-yellow-400'
@@ -178,14 +242,6 @@ export default {
                 >
                   {{ branch.status }}
                 </span>
-              </td>
-              <td class="py-2 px-2 sm:py-3 sm:px-4">
-                <button @click="toggleStatus(branch)" :class="['px-3 py-1 rounded-full text-xs sm:text-sm font-medium transition',
-                  branch.status === 'Active' 
-                  ? 'bg-red-600 hover:bg-red-700 text-white' 
-                  : 'bg-green-600 hover:bg-green-700 text-white']">
-                  {{ branch.status === 'Active' ? 'Deactivate' : 'Activate' }}
-                </button>
               </td>
               <td class="py-2 px-2 sm:py-3 sm:px-4 flex flex-wrap gap-2">
                 <button

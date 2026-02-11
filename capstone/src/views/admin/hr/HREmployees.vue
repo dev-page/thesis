@@ -201,8 +201,11 @@
 </template>
 
 <script>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
+import { getFirestore, collection, getDocs, doc, updateDoc } from 'firebase/firestore';
+import { getApp } from 'firebase/app';
 import HRSidebar from '@/components/sidebar/HRSidebar.vue'
+import { toast } from 'vue3-toastify'
 
 export default {
   name: 'HREmployees',
@@ -210,26 +213,41 @@ export default {
     HRSidebar
   },
   setup() {
+    const db = getFirestore(getApp())
+
     const showAddModal = ref(false)
+    const showEditModal = ref(false)
     const searchQuery = ref('')
     const selectedBranch = ref('')
     const selectedPosition = ref('')
 
-    const employees = ref([
-      { id: 'EMP001', name: 'Maria Santos', position: 'Manager', branch: 'Imus Branch', email: 'maria@aestheticare.com', status: 'Active' },
-      { id: 'EMP002', name: 'John Doe', position: 'Practitioner', branch: 'Trece Martires Branch', email: 'john@aestheticare.com', status: 'Active' },
-      { id: 'EMP003', name: 'Jane Smith', position: 'Receptionist', branch: 'Dasmarinas Branch', email: 'jane@aestheticare.com', status: 'Active' },
-      { id: 'EMP004', name: 'Robert Johnson', position: 'Nurse', branch: 'Bacoor Branch', email: 'robert@aestheticare.com', status: 'Active' },
-      { id: 'EMP005', name: 'Emily Davis', position: 'Practitioner', branch: 'Imus Branch', email: 'emily@aestheticare.com', status: 'Inactive' },
-      { id: 'EMP006', name: 'Michael Brown', position: 'Manager', branch: 'Cavite City Branch', email: 'michael@aestheticare.com', status: 'Active' },
-    ])
+    const employees = ref([])
+    const currentEmployee = ref({
+      id: null,
+      name: '',
+      email: '',
+      branch: '',
+      position: '',
+      status: 'Active'
+    })
+
+    const loadEmployees = async () => {
+      try {
+        const staffSnapshot = await getDocs(collection(db, "users"))
+        const staffData = staffSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })).filter(u => u.userType === 'Staff')
+      } catch (err) {
+        console.error("Error loading employees:", err)
+      }
+    }
+
+    onMounted(loadEmployees)
 
     const filteredEmployees = computed(() => {
       return employees.value.filter(emp => {
-        const matchesSearch = emp.name.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
-                            emp.email.toLowerCase().includes(searchQuery.value.toLowerCase())
-        const matchesBranch = !selectedBranch.value || emp.branch.includes(selectedBranch.value)
-        const matchesPosition = !selectedPosition.value || emp.position === selectedPosition.value
+        const matchesSearch = emp.name?.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
+                            emp.email?.toLowerCase().includes(searchQuery.value.toLowerCase())
+        const matchesBranch = !selectedBranch.value || emp.branch?.includes(selectedBranch.value)
+        const matchesPosition = !selectedPosition.value || emp.role === selectedPosition.value || emp.position === selectedPosition.value
         
         return matchesSearch && matchesBranch && matchesPosition
       })
@@ -240,14 +258,43 @@ export default {
       showAddModal.value = false
     }
 
+    const editEmployee = (employee) => {
+      currentEmployee.value = { ...employee }
+      showEditModal.value = true
+    }
+
+    const saveEmployee = async () => {
+      try {
+        if (!currentEmployee.value.id) return
+        const employeeRef = doc(db, "users", currentEmployee.value.id)
+        await updateDoc(employeeRef, {
+          name: currentEmployee.value.name,
+          email: currentEmployee.value.email,
+          branch: currentEmployee.value.branch,
+          position: currentEmployee.value.position,
+          status: currentEmployee.value.status
+        })
+        toast.success("Employee updated successfully!")
+        showEditModal.value = false
+        await loadEmployees()
+      } catch (err) {
+        console.error("Error updating employee:", err)
+        toast.error("Failed to update employee.")
+      }
+    }
+
     return {
       showAddModal,
+      showEditModal,
       searchQuery,
       selectedBranch,
       selectedPosition,
       employees,
       filteredEmployees,
-      addEmployee
+      currentEmployee,
+      addEmployee,
+      editEmployee,
+      saveEmployee
     }
   }
 }

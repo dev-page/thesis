@@ -60,8 +60,8 @@
           U
         </div>
         <div class="flex-1">
-          <p class="text-white text-sm font-medium">HR Admin</p>
-          <p class="text-slate-400 text-xs">admin@aestheticare.com</p>
+          <p class="text-white text-sm font-medium">{{ hrName }}</p>
+          <p class="text-slate-400 text-xs">{{ hrEmail }}</p>
         </div>
       </div>
       <button @click="logout" class="flex items-center gap-3 w-full px-4 py-2 mt-2 border border-purple-500 text-purple-500 rounded-lg hover:bg-purple-500 hover:text-white transition-colors">
@@ -75,8 +75,58 @@
 </template>
 
 <script>
+import { ref, watch, onMounted, onUnmounted } from 'vue';
+import { useRouter } from 'vue-router';
+import { getFirestore, doc, getDoc } from 'firebase/firestore';
+import { auth } from '@/config/firebaseConfig';
+
 export default {
   name: 'HRSidebar',
+  setup() {
+    const isOpen = ref(false);
+    const router = useRouter();
+    const db = getFirestore();
+
+    const hrName = ref('');
+    const hrEmail = ref('');
+
+    const toggleSidebar = () => {
+      isOpen.value = !isOpen.value;
+    };
+
+    const logout = () => {
+      alert('Logging out...'); // Replace with actual logout logic
+      router.push('/login');
+    }
+
+    watch(isOpen, (open) => {
+      document.body.style.overflow = open ? 'hidden' : '';
+    });
+
+    onUnmounted(() => {
+      document.body.style.overflow = '';
+    });
+
+    const loadHRDetails = async () => {
+      const user = auth.currentUser;
+      if (user) {
+        const userRef = doc(db, 'users', user.uid);
+        const userSnap = await getDoc(userRef);
+        if (userSnap.exists()) {
+          const hrData = userSnap.data();
+          hrName.value = `${hrData.firstName || ''} ${hrData.lastName || ''}`.trim();
+          hrEmail.value = hrData.email || user.email;
+        } else {
+          hrName.value = 'HR User';
+          hrEmail.value = user.email || '';
+        }
+      }
+    };
+
+    onMounted(loadHRDetails);
+
+    return { isOpen, toggleSidebar, logout, hrName, hrEmail }
+  }
 }
 </script>
 

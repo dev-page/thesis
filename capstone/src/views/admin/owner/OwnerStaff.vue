@@ -1,4 +1,3 @@
-
 <script>
 import { ref, onMounted, computed } from 'vue'
 import { getFirestore, collection, getDocs, updateDoc, doc, deleteDoc, setDoc } from 'firebase/firestore'
@@ -78,30 +77,43 @@ export default {
     }
 
     const deactivateStaff = async (staff) => {
-      const result = await Swal.fire({
-        title: 'Confirm Deactivation',
-        text: `Are you sure you want to deactivate ${staff.name}? They will not be able to log in.`,
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#d33',
-        cancelButtonColor: '#3085d6',
-        confirmButtonText: 'Yes, deactivate',
-        cancelButtonText: 'Cancel'
-      });
+      if (staff.status === 'Active') {
+        const result = await Swal.fire({
+          title: 'Confirm Deactivation',
+          text: `Are you sure you want to deactivate ${staff.name}? They will not be able to log in.`,
+          icon: 'warning',
+          showCancelButton: true,
+          confirmButtonColor: '#d33',
+          cancelButtonColor: '#3085d6',
+          confirmButtonText: 'Yes, deactivate',
+          cancelButtonText: 'Cancel'
+        });
 
-      if (!result.isConfirmed) {
-        toast.info("Deactivation cancelled.");
-        return;
-      }
+        if (!result.isConfirmed) {
+          toast.info("Deactivation cancelled.");
+          return;
+        }
 
-      try {
-        const staffRef = doc(db, "users", staff.id);
-        await updateDoc(staffRef, { status: 'Inactive' });
-        staff.status = 'Inactive';
-        toast.success(`${staff.name} has been deactivated and cannot log in.`);
-      } catch (error) {
-        console.error(error);
-        toast.error("Failed to deactivate staff.");
+        try {
+          const staffRef = doc(db, "users", staff.id);
+          await updateDoc(staffRef, { status: 'Inactive' });
+          staff.status = 'Inactive';
+          toast.success(`${staff.name} has been deactivated and cannot log in.`);
+        } catch (error) {
+          console.error(error);
+          toast.error("Failed to deactivate staff.");
+        }
+      } else {
+         try {
+          const staffRef = doc(db, "users", staff.id);
+          await updateDoc(staffRef, { status: 'Active' });
+          staff.status = 'Active';
+          toast.success(`${staff.name} has been reactivated.`);
+          await loadStaff() // Refresh staff list to reflect changes
+        } catch (error) {
+          console.error(error);
+          toast.error("Failed to reactivate staff.");
+        }
       }
     };
 
@@ -131,11 +143,13 @@ export default {
         await deleteDoc(doc(db, "users", staff.id));
         staffList.value = staffList.value.filter((s) => s.id !== staff.id);
         toast.success(`${staff.name} has been deleted successfully.`);
+        await loadStaff() // Refresh staff list to reflect changes
       } catch (error) {
         console.error("Error deleting staff:", error);
         toast.error("Failed to delete staff. Please try again.");
       }
     };
+
     const saveStaff = async () => {
       if (!currentStaff.value.name.trim() || !currentStaff.value.email.trim() || !currentStaff.value.role.trim()) {
         toast.error('Name, email, and role are required.');
@@ -171,6 +185,7 @@ export default {
             status: currentStaff.value.status ?? "Active"
           }, { merge: true });
           toast.success('Staff member updated successfully!');
+          await loadStaff() // Refresh staff list to reflect changes
         } else {
           // 🔹 Create new staff with confirmation
           const result = await Swal.fire({
@@ -213,11 +228,13 @@ export default {
             level: currentStaff.value.level,
             branch: currentStaff.value.branch || null,
             status: currentStaff.value.status ?? "Active",
+            mustChangePassword: true,
             createdAt: new Date()
           });
 
           staffList.value.push({ ...currentStaff.value, id: uid, userType: 'Staff', status: "Active" });
           toast.success('Staff member added successfully!');
+          await loadStaff() // Refresh staff list to reflect changes
         }
       } catch (err) {
         console.error(err);
@@ -226,7 +243,7 @@ export default {
 
       showAddModal.value = false;
       showEditModal.value = false;
-    };
+    }
 
     return {
       staffList,
@@ -290,7 +307,7 @@ export default {
               <td class="py-2 px-2 sm:py-3 sm:px-4">{{ staff.level }}</td>
               <td class="py-2 px-2 sm:py-3 sm:px-4">{{ staff.level === 'Branch' ? staff.branch : '-' }}</td>
               <td class="py-2 px-2 sm:py-3 sm:px-4">
-                <span :class="staff.status === 'Active' ? 'text-green-400' : 'text-red-400'">
+                <span @click="deactivateStaff(staff)" :class="['px-3 py-1 rounded-full text-xs font-medium cursor-pointer', staff.status === 'Active' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400']">
                   {{ staff.status }}
               </span>
               </td>
@@ -300,13 +317,6 @@ export default {
                   class="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1 rounded transition flex-1 sm:flex-none"
                 >
                   Edit
-                </button>
-                <button
-                  @click="deactivateStaff(staff)"
-                  class="bg-orange-600 hover:bg-red-700 text-white px-3 py-1 rounded transition flex-1 sm:flex-none"
-                  v-if="staff.status === 'Active'"
-                  >
-                  Deactivate
                 </button>
                 <button
                   @click="deleteStaff(staff)"

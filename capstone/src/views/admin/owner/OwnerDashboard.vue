@@ -15,16 +15,25 @@ export default {
     const monthlyRevenue = ref(0)
 
     const branches = ref([])
+    const staff = ref([])
 
     const loadDashboardData = async () => {
-      const snapshot = await getDocs(collection(db, "clinics"));
-      const branchData = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data(), }));
+      try {
+        const branchSnapshot = await getDocs(collection(db, "clinics"));
+        const branchData = branchSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
-      branches.value = branchData
-      
-      totalBranches.value = branches.value.length
-      totalEmployees.value = branches.value.reduce((sum, b) => sum + (b.employees || 0), 0)
-      monthlyRevenue.value = branches.value.reduce((sum, b) => sum + (b.revenue || 0), 0)
+        branches.value = branchData
+        totalBranches.value = branches.value.length
+
+        const staffSnapshot = await getDocs(collection(db, "users"));
+        const staffData = staffSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })).filter(u => u.userType === 'Staff');
+        staff.value = staffData
+        totalEmployees.value = staff.value.length
+        
+        monthlyRevenue.value = branches.value.reduce((sum, b) => sum + (b.revenue || 0), 0)
+      } catch (error) {
+        console.error("Error loading dashboard data:", error)
+      }
     };
 
     onMounted(loadDashboardData)

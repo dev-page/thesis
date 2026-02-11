@@ -89,7 +89,9 @@
 </template>
 
 <script>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
+import { getFirestore, collection, getDocs, orderBy, query } from 'firebase/firestore';
+import { getApp } from 'firebase/app';
 import HRSidebar from '@/components/sidebar/HRSidebar.vue'
 
 export default {
@@ -98,24 +100,44 @@ export default {
     HRSidebar
   },
   setup() {
-    const totalBranches = ref(5)
-    const totalEmployees = ref(127)
-    const activeEmployees = ref(119)
+    const db = getFirestore(getApp())
 
-    const branchDistribution = ref([
-      { name: 'Imus Branch', employees: 35 },
-      { name: 'Trece Martires Branch', employees: 28 },
-      { name: 'Dasmarinas Branch', employees: 24 },
-      { name: 'Bacoor Branch', employees: 22 },
-      { name: 'Cavite City Branch', employees: 18 }
-    ])
+    const totalBranches = ref(0)
+    const totalEmployees = ref(0)
+    const activeEmployees = ref(0)
+    const branchDistribution = ref([])
+    const recentActivity = ref([])
 
-    const recentActivity = ref([
-      { id: 1, action: 'New employee added: Maria Santos - Imus Branch', time: '2 hours ago' },
-      { id: 2, action: 'Employee updated: John Doe - Trece Martires Branch', time: '5 hours ago' },
-      { id: 3, action: 'New branch created: Cavite City Branch', time: '1 day ago' },
-      { id: 4, action: 'Employee resigned: Jane Smith - Bacoor Branch', time: '2 days ago' }
-    ])
+    const loadDashboardData = async () => {
+      try {
+        const branchSnapshot = await getDocs(collection(db, 'clinics'))
+        const branches = branchSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+
+        const staffSnapshot = await getDocs(collection(db, 'users'))
+        const staff = staffSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })).filter(u => u.userType === 'Staff')
+      
+        totalBranches.value = branches.length
+        totalEmployees.value = staff.length
+        activeEmployees.value = staff.filter(s => s.status === 'Active').length
+
+        branchDistribution.value = branches.map(branch => ({
+          name: branch.clinicBranch,
+          employees: staff.filter(s => s.branch === branch.clinicBranch).length
+        }))
+
+        const logsQuery = query(collection(db, 'logs'), orderBy('time', 'desc'))
+        const logsSnapshot = await getDocs(logsQuery)
+        recentActivity.value = logsSnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data(),
+          time: doc.data().time?.toDate().toLocaleString() || 'Unknown time'
+        }))
+      } catch (error) {
+        console.error('Error loading dashboard data:', error)
+      }
+    }
+
+    onMounted(loadDashboardData)
 
     return {
       totalBranches,

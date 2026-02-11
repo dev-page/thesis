@@ -66,6 +66,7 @@ const handleLogin = async () => {
       const userSnap = await getDoc(userRef)
 
       if (userSnap.exists()) {
+        const data = userSnap.data()
         const role = userSnap.data().role || 'Customer'
         const redirectPath = roleRoutes[role] || '/dashboard'
 
@@ -74,6 +75,12 @@ const handleLogin = async () => {
         setTimeout(() => {
           router.push(redirectPath)
         }, 2000)
+
+        if (data.mustChangePassword) {
+          setTimeout(() => {
+            toast.info('Reminder: You are required to change your password. Please use the reset option inside your dashboard.')
+          }, 1500)
+        }
       }
     } catch (err) {
       console.error(err)
