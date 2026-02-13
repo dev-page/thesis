@@ -1,3 +1,84 @@
+
+<script>
+import { ref, watch, onMounted, onUnmounted } from 'vue';
+import Swal from 'sweetalert2'
+import { useRouter } from 'vue-router';
+import { getFirestore, doc, getDoc } from 'firebase/firestore';
+import { auth } from '@/config/firebaseConfig';
+
+export default {
+  name: 'HRSidebar',
+  setup() {
+    const isOpen = ref(false);
+    const isEmpOpen = ref(false);
+    const isShiftOpen = ref(false);
+    const router = useRouter();
+    const db = getFirestore();
+
+    const hrName = ref('');
+    const hrEmail = ref('');
+
+    const toggleEmpDropdown = () => {
+      isEmpOpen.value = !isEmpOpen.value;
+    };
+
+    const toggleShiftDropdown = () => {
+      isShiftOpen.value = !isShiftOpen.value;
+    };
+
+    const toggleSidebar = () => {
+      isOpen.value = !isOpen.value;
+    };
+
+    const logout = () => {
+      Swal.fire({
+        title: 'Are you sure?',
+        text: 'Do you really want to log out?',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#3085d6',
+        cancelButtonColor: '#d33',
+        confirmButtonText: 'Yes, log me out',
+        cancelButtonText: 'Cancel'
+      }).then((result) => {
+        if (result.isConfirmed) {
+          // Replace with actual logout logic if needed
+          router.push('/login')
+        }
+      })
+    }
+
+    watch(isOpen, (open) => {
+      document.body.style.overflow = open ? 'hidden' : '';
+    });
+
+    onUnmounted(() => {
+      document.body.style.overflow = '';
+    });
+
+    const loadHRDetails = async () => {
+      const user = auth.currentUser;
+      if (user) {
+        const userRef = doc(db, 'users', user.uid);
+        const userSnap = await getDoc(userRef);
+        if (userSnap.exists()) {
+          const hrData = userSnap.data();
+          hrName.value = `${hrData.firstName || ''} ${hrData.lastName || ''}`.trim();
+          hrEmail.value = hrData.email || user.email;
+        } else {
+          hrName.value = 'HR User';
+          hrEmail.value = user.email || '';
+        }
+      }
+    };
+
+    onMounted(loadHRDetails);
+
+    return { isOpen, isEmpOpen, isShiftOpen, toggleEmpDropdown, toggleSidebar, toggleShiftDropdown, logout, hrName, hrEmail }
+  }
+}
+</script>
+
 <template>
   <aside class="w-64 bg-slate-800 min-h-screen flex flex-col">
     <!-- Logo/Header -->
@@ -26,18 +107,96 @@
             <span>Dashboard</span>
           </router-link>
         </li>
-        <li>
-          <router-link
-            to="/hr/employees"
-            class="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-300 hover:bg-slate-700 hover:text-white transition-colors"
-            active-class="bg-purple-500 text-white hover:bg-purple-600"
-          >
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path>
-            </svg>
-            <span>Employees</span>
-          </router-link>
-        </li>
+          <li>
+            <button
+              @click="toggleEmpDropdown"
+              class="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-300 hover:bg-rose-600 hover:text-gold-50 transition-colors"
+              exact-active-class="bg-gold-700 text-slate-50 hover:bg-gold-800"
+            >
+              <div class="flex items-center gap-3">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M5 6a2 2 0 110 4a2 2 0 010-4 m14 0a2 2 0 110 4a2 2 0 010-4 M12 15a2 2 0 110 4a2 2 0 010-4 M7 8l5 6 5-6 " />
+              </svg>
+                <span class="text-sm">Employees</span>
+              </div>
+              <svg
+                class="w-4 h-4 transform transition-transform"
+                :class="{ 'rotate-90': isEmpOpen }"
+                fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+
+            <ul v-if="isEmpOpen" class="ml-8 mt-2 space-y-2">
+              <li>
+                <router-link
+                  to="/hr/employee-profile"
+                  class="text-sm block px-4 py-2 rounded-lg text-gold-700 hover:bg-rose-600 hover:text-white transition-colors"
+                  active-class="bg-gold-700 text-slate-50 hover:bg-gold-800">
+                  Employee Profiles
+                </router-link>
+              </li>
+              <li>
+                <router-link
+                  to="/hr/add-employee"
+                  class=" text-sm block px-4 py-2 rounded-lg text-gold-700 hover:bg-rose-600 hover:text-white transition-colors"
+                  active-class="bg-gold-700 text-slate-50 hover:bg-gold-800">
+                  Add Employee
+                </router-link>
+              </li>
+            </ul>
+          </li>
+          <li>
+            <button
+              @click="toggleShiftDropdown"
+              class="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-300 hover:bg-rose-600 hover:text-gold-50 transition-colors"
+              exact-active-class="bg-gold-700 text-slate-50 hover:bg-gold-800"
+            >
+              <div class="flex items-center gap-3">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M5 6a2 2 0 110 4a2 2 0 010-4 m14 0a2 2 0 110 4a2 2 0 010-4 M12 15a2 2 0 110 4a2 2 0 010-4 M7 8l5 6 5-6 " />
+              </svg>
+                <span class="text-sm">Shift Management</span>
+              </div>
+              <svg
+                class="w-4 h-4 transform transition-transform"
+                :class="{ 'rotate-90': isShiftOpen }"
+                fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+
+            <ul v-if="isShiftOpen" class="ml-8 mt-2 space-y-2">
+              <li>
+                <router-link
+                  to="/hr/shift-list"
+                  class="text-sm block px-4 py-2 rounded-lg text-gold-700 hover:bg-rose-600 hover:text-white transition-colors"
+                  active-class="bg-gold-700 text-slate-50 hover:bg-gold-800">
+                  Shift List
+                </router-link>
+              </li>
+              <li>
+                <router-link
+                  to="/hr/add-shift"
+                  class=" text-sm block px-4 py-2 rounded-lg text-gold-700 hover:bg-rose-600 hover:text-white transition-colors"
+                  active-class="bg-gold-700 text-slate-50 hover:bg-gold-800">
+                  Add Shift
+                </router-link>
+              </li>
+              <li>
+                <router-link
+                  to="/hr/shift-assignment"
+                  class=" text-sm block px-4 py-2 rounded-lg text-gold-700 hover:bg-rose-600 hover:text-white transition-colors"
+                  active-class="bg-gold-700 text-slate-50 hover:bg-gold-800">
+                  Assign Shift
+                </router-link>
+              </li>
+            </ul>
+          </li>
         <li>
           <router-link
             to="/hr/sales"
@@ -60,8 +219,8 @@
           U
         </div>
         <div class="flex-1">
-          <p class="text-white text-sm font-medium">HR Admin</p>
-          <p class="text-slate-400 text-xs">admin@aestheticare.com</p>
+          <p class="text-white text-sm font-medium">{{ hrName }}</p>
+          <p class="text-slate-400 text-xs">{{ hrEmail }}</p>
         </div>
       </div>
       <button @click="logout" class="flex items-center gap-3 w-full px-4 py-2 mt-2 border border-purple-500 text-purple-500 rounded-lg hover:bg-purple-500 hover:text-white transition-colors">
@@ -73,12 +232,6 @@
     </div>
   </aside>
 </template>
-
-<script>
-export default {
-  name: 'HRSidebar',
-}
-</script>
 
 <style scoped>
 .router-link-active {

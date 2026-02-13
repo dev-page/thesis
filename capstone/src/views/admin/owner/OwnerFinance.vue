@@ -1,6 +1,6 @@
 <script>
 import OwnerSidebar from '@/components/sidebar/OwnerSidebar.vue';
-import { ref, onMounted, computed, watch } from 'vue';
+import { ref, onMounted, computed, watch, nextTick } from 'vue';
 import Chart from 'chart.js/auto';
 import { getFirestore, collection, getDocs } from 'firebase/firestore';
 import { getApp } from 'firebase/app';
@@ -42,12 +42,13 @@ export default {
 
     // Payroll by branch chart
     const renderPayrollChart = () => {
-      const labels = branches.value.map(b => b.name || b.clinicName);
+      const labels = branches.value.map(b => b.clinicBranch || b.name || b.clinicName);
       const data = branches.value.map(b => b.employees ? b.employees.reduce((sum, e) => sum + (e.proposedSalary || 0), 0) : 0);
 
       if (payrollChartInstance) payrollChartInstance.destroy();
 
-      payrollChartInstance = new Chart(payrollChart.value.getContext('2d'), {
+      const ctx = payrollChart.value.getContext('2d');
+      payrollChartInstance = new Chart(ctx, {
         type: 'bar',
         data: {
           labels,
@@ -74,6 +75,8 @@ export default {
 
     // Revenue vs Payroll chart
     const renderFinanceChart = () => {
+      if (!financeChart.value) return;
+
       const data = {
         labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May'],
         datasets: [
@@ -96,7 +99,8 @@ export default {
 
       if (financeChartInstance) financeChartInstance.destroy();
 
-      financeChartInstance = new Chart(financeChart.value.getContext('2d'), {
+      const ctx = financeChart.value.getContext('2d');
+      financeChartInstance = new Chart(ctx, {
         type: 'line',
         data,
         options: {
@@ -112,12 +116,16 @@ export default {
 
     onMounted(async () => {
       await loadFinanceData();
+      await nextTick(); // Ensure DOM is updated before rendering charts
       renderPayrollChart();
       renderFinanceChart();
     });
 
     // Update chart if branch data changes
-    watch(branches, () => { renderPayrollChart(); }, { deep: true });
+    watch(branches, async () => { 
+      await nextTick(); // Wait for DOM update
+      renderPayrollChart(); 
+    }, { deep: true });
 
     return {
       totalPayroll, revenue, payrollPercentage,
@@ -143,19 +151,19 @@ export default {
         <div class="bg-slate-800 rounded-xl p-4 md:p-6 border border-slate-700">
           <h3 class="text-slate-400 text-sm mb-1">Total Payroll</h3>
           <p class="text-2xl md:text-3xl font-bold text-white">${{ totalPayroll }}</p>
-          <p class="text-xs text-green-500 mt-1">+5% from last month</p>
+          <p class="text-xs text-green-500 mt-1">-</p>
         </div>
 
         <div class="bg-slate-800 rounded-xl p-4 md:p-6 border border-slate-700">
           <h3 class="text-slate-400 text-sm mb-1">Revenue This Month</h3>
           <p class="text-2xl md:text-3xl font-bold text-white">${{ revenue }}</p>
-          <p class="text-xs text-green-500 mt-1">+8% growth</p>
+          <p class="text-xs text-green-500 mt-1">-</p>
         </div>
 
         <div class="bg-slate-800 rounded-xl p-4 md:p-6 border border-slate-700">
           <h3 class="text-slate-400 text-sm mb-1">Payroll % of Revenue</h3>
           <p class="text-2xl md:text-3xl font-bold text-white">{{ payrollPercentage }}%</p>
-          <p class="text-xs text-slate-500 mt-1">Healthy range: 35–45%</p>
+          <p class="text-xs text-slate-500 mt-1">-</p>
         </div>
       </div>
 

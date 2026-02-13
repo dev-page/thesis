@@ -9,4 +9,16 @@ export default defineConfig({
       '@': path.resolve(__dirname, 'src'),
     },
   },
+  server: {
+    proxy: {
+      '/upload': {
+        target: 'http://localhost:3000',
+        changeOrigin: true,
+      },
+      '/send-otp': {
+        target: 'http://localhost:3000',
+        changeOrigin: true,
+      },
+    },
+  }
 })
