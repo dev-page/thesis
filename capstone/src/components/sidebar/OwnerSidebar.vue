@@ -1,6 +1,7 @@
 
 <script>
 import { ref, watch, onUnmounted, onMounted } from 'vue';
+import Swal from 'sweetalert2'
 import { useRouter } from 'vue-router';
 import { getFirestore, doc, getDoc } from 'firebase/firestore';
 import { getApp } from 'firebase/app';
@@ -10,6 +11,7 @@ export default {
   name: 'OwnerSidebar',
   setup() {
     const isOpen = ref(false);
+    const isStaffOpen = ref(false);
     const router = useRouter();
     const db = getFirestore(getApp());
 
@@ -20,10 +22,32 @@ export default {
       isOpen.value = !isOpen.value;
     };
 
-    const logout = () => {
-      alert('Logging out...');
-      router.push('/login');
+    const toggleDropdown = () => {
+      isOpen.value = !isOpen.value;
     };
+
+    const toggleStaffDropdown = () => {
+      isStaffOpen.value = !isStaffOpen.value;
+    };
+
+    const logout = () => {
+      Swal.fire({
+        title: 'Are you sure?',
+        text: 'Do you really want to log out?',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#3085d6',
+        cancelButtonColor: '#d33',
+        confirmButtonText: 'Yes, log me out',
+        cancelButtonText: 'Cancel'
+      }).then((result) => {
+        if (result.isConfirmed) {
+          // Replace with actual logout logic if needed
+          router.push('/login')
+        }
+      })
+    }
+
 
     watch(isOpen, (open) => {
       document.body.style.overflow = open ? 'hidden' : ''; 
@@ -48,7 +72,7 @@ export default {
 
     onMounted(loadOwnerInfo);
 
-    return { isOpen, toggleSidebar, logout, ownerEmail, ownerName };
+    return { isOpen, isStaffOpen, toggleSidebar, toggleDropdown, toggleStaffDropdown, logout, ownerEmail, ownerName };
   }
 };
 
@@ -74,7 +98,6 @@ export default {
       ]"
       style="width: 16rem;"
     >
-      <!-- Sidebar Header -->
       <div class="p-6 border-b border-slate-700">
         <div class="flex items-center gap-3">
           <div class="h-10 w-10 rounded-xl bg-gradient-to-br from-gold-600 to-gold-800"></div>
@@ -85,60 +108,130 @@ export default {
         </div>
       </div>
 
-      <!-- Navigation -->
       <nav class="flex-1 p-4 overflow-y-auto">
         <ul class="space-y-2">
           <li>
             <router-link
               to="/owner/dashboard"
-              class="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-300 hover:bg-rose-600 hover:text-gold-50 transition-colors"
+              class="block w-full flex items-center gap-3 px-4 py-3 rounded-lg text-slate-300 hover:bg-rose-600 hover:text-gold-50 transition-colors"
               exact-active-class="bg-gold-700 text-slate-50 hover:bg-gold-800"
             >
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                   d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
               </svg>
-              <span>Dashboard</span>
+              <span class="text-sm">Dashboard</span>
             </router-link>
           </li>
 
           <li>
-            <router-link
-              to="/owner/branch"
-              class="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-300 hover:bg-rose-600 hover:text-gold-50 transition-colors"
+            <button
+              @click="toggleDropdown"
+              class="block w-full flex items-center gap-3 px-4 py-3 rounded-lg text-slate-300 hover:bg-rose-600 hover:text-gold-50 transition-colors"
               exact-active-class="bg-gold-700 text-slate-50 hover:bg-gold-800"
             >
+              <div class="flex items-center gap-3">
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                   d="M5 6a2 2 0 110 4a2 2 0 010-4 m14 0a2 2 0 110 4a2 2 0 010-4 M12 15a2 2 0 110 4a2 2 0 010-4 M7 8l5 6 5-6 " />
               </svg>
-              <span>Branch Management</span>
-            </router-link>
-          </li>
-
-          <li>
-            <router-link
-              to="/owner/staff"
-              class="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-300 hover:bg-rose-600 hover:text-gold-50 transition-colors"
-              exact-active-class="bg-gold-700 text-slate-50 hover:bg-gold-800"
-            >
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <span class="text-sm">Branch Management</span>
+              </div>
+              <svg
+                class="w-4 h-4 transform transition-transform"
+                :class="{ 'rotate-90': isOpen }"
+                fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                  d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2
-                  c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0
-                  015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857
-                  m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0
-                  3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0
-                  zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                d="M9 5l7 7-7 7" />
               </svg>
-              <span>Staff Management</span>
-            </router-link>
+            </button>
+
+            <ul v-if="isOpen" class="ml-8 mt-2 space-y-2">
+              <li>
+                <router-link
+                  to="/owner/branch/branch-info"
+                  class="block w-full text-sm block px-4 py-2 rounded-lg text-gold-700 hover:bg-rose-600 hover:text-white transition-colors"
+                  active-class="bg-gold-700 text-slate-50 hover:bg-gold-800">
+                  Branch Information  
+                </router-link>
+              </li>
+              <li>
+                <router-link
+                  to="/owner/branch/add-branch"
+                  class="block w-full text-sm block px-4 py-2 rounded-lg text-gold-700 hover:bg-rose-600 hover:text-white transition-colors"
+                  active-class="bg-gold-700 text-slate-50 hover:bg-gold-800">
+                  Add Branch
+                </router-link>
+              </li>
+            </ul>
+          </li>
+          <li>
+            <button
+              @click="toggleStaffDropdown"
+              class="block w-full flex items-center gap-3 px-4 py-3 rounded-lg text-slate-300 hover:bg-rose-600 hover:text-gold-50 transition-colors"
+              :class="{ 'bg-gold-700 text-slate-50': isStaffOpen }"
+            >
+              <div class="flex items-center gap-3">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2
+                    c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0
+                    015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857
+                    m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0
+                    3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0
+                    zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                </svg>
+                <span class="text-sm">Staff Management</span>
+              </div>
+              <svg
+                class="w-4 h-4 transform transition-transform"
+                :class="{ 'rotate-90': isStaffOpen }"
+                fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+
+            <ul v-if="isStaffOpen" class="ml-8 mt-2 space-y-2">
+              <li>
+                <router-link
+                  to="/owner/staff/profiles"
+                  class="text-sm block px-4 py-2 rounded-lg text-gold-700 hover:bg-rose-600 hover:text-white transition-colors"
+                  active-class="bg-gold-700 text-slate-50 hover:bg-gold-800">
+                  Staff Profiles
+                </router-link>
+              </li>
+              <li>
+                <router-link
+                  to="/owner/staff/add-staff"
+                  class="text-sm block px-4 py-2 rounded-lg text-gold-700 hover:bg-rose-600 hover:text-white transition-colors"
+                  active-class="bg-gold-700 text-slate-50 hover:bg-gold-800">
+                  Add Staff
+                </router-link>
+              </li>
+              <li>
+                <router-link
+                  to="/owner/staff/attendance"
+                  class="text-sm block px-4 py-2 rounded-lg text-gold-700 hover:bg-rose-600 hover:text-white transition-colors"
+                  active-class="bg-gold-700 text-slate-50 hover:bg-gold-800">
+                  Attendance
+                </router-link>
+              </li>
+              <li>
+                <router-link
+                  to="/owner/staff/approve"
+                  class="text-sm block px-4 py-2 rounded-lg text-gold-700 hover:bg-rose-600 hover:text-white transition-colors"
+                  active-class="bg-gold-700 text-slate-50 hover:bg-gold-800">
+                  Approval Requests
+                </router-link>
+              </li>
+            </ul>
           </li>
 
           <li>
             <router-link
               to="/owner/finance"
-              class="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-300 hover:bg-rose-600 hover:text-gold-50 transition-colors"
+              class="block w-full text-sm flex items-center gap-3 px-4 py-3 rounded-lg text-slate-300 hover:bg-rose-600 hover:text-gold-50 transition-colors"
               exact-active-class="bg-gold-700 text-slate-50 hover:bg-gold-800"
             >
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -157,7 +250,7 @@ export default {
           <li>
             <router-link
               to="/owner/clinic-profile"
-              class="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-300 hover:bg-rose-600 hover:text-gold-50 transition-colors"
+              class="text-sm block w-full flex items-center gap-3 px-4 py-3 rounded-lg text-slate-300 hover:bg-rose-600 hover:text-gold-50 transition-colors"
               exact-active-class="bg-gold-700 text-slate-50 hover:bg-gold-800"
             >
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -171,7 +264,7 @@ export default {
           <li>
             <router-link
               to="/owner/reports"
-              class="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-300 hover:bg-rose-600 hover:text-gold-50 transition-colors"
+              class="text-sm block w-full flex items-center gap-3 px-4 py-3 rounded-lg text-slate-300 hover:bg-rose-600 hover:text-gold-50 transition-colors"
               exact-active-class="bg-gold-700 text-slate-50 hover:bg-gold-800"
             >
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
