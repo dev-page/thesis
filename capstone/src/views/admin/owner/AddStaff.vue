@@ -1,5 +1,5 @@
 <script>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { getFirestore, collection, doc, getDocs, setDoc } from 'firebase/firestore'
 import { getApp } from 'firebase/app'
 import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth'
@@ -19,10 +19,11 @@ export default {
       firstName: '',
       lastName: '',
       email: '',
-      role: '',
+      phoneNumber: '',
+      role: 'HR',
       userType: 'Staff',
-      level: '',
-      branch: '',
+      clinicBranch: '',
+      clinicLocation: '',
       status: 'Active'
     })
 
@@ -40,25 +41,23 @@ export default {
       loadBranches()
     })
 
-    const officeRoles = ['HR', 'CRM', 'Supply', 'Finance']
-    const branchRoles = ['Manager', 'Cashier', 'Practitioner']
-
     const resetForm = () => {
       currentStaff.value = {
         firstName: '',
         lastName: '',
         email: '',
-        role: '',
+        phoneNumber: '',
+        role: 'HR',
         userType: 'Staff',
-        level: '',
-        branch: '',
+        clinicBranch: '',
+        clinicLocation: '',
         status: 'Active'
       }
     }
 
     const saveStaff = async () => {
-      if (!currentStaff.value.firstName.trim() || !currentStaff.value.lastName.trim() || !currentStaff.value.email.trim() || !currentStaff.value.role.trim()) {
-        toast.error('First name, last name, email, and role are required.')
+      if (!currentStaff.value.firstName.trim() || !currentStaff.value.lastName.trim() || !currentStaff.value.email.trim() || !currentStaff.value.phoneNumber.trim() || !currentStaff.value.role.trim() || !currentStaff.value.clinicBranch.trim() || !currentStaff.value.clinicLocation.trim()) {
+        toast.error('All fields are required.')
         return
       }
 
@@ -105,10 +104,11 @@ export default {
             lastName: currentStaff.value.lastName,
             fullName: `${currentStaff.value.firstName} ${currentStaff.value.lastName}`, // optional convenience field
             email: currentStaff.value.email,
-            role: currentStaff.value.role,
+            phoneNumber: currentStaff.value.phoneNumber,
+            role: 'HR',
             userType: 'Staff',
-            level: currentStaff.value.level,
-            branch: currentStaff.value.branch || null,
+            cliniBranch: currentStaff.value.branch,
+            clinicLocation: currentStaff.value.clinicLocation,
             status: currentStaff.value.status ?? "Active",
             mustChangePassword: true,
             createdAt: new Date()
@@ -128,14 +128,23 @@ export default {
       }
     }
 
+    const isFormEmpty = computed(() => {
+      const s = currentStaff.value
+      return !s.firstName?.trim() &&
+             !s.lastName?.trim() &&
+             !s.email?.trim() &&
+             !s.phoneNumber?.trim() &&
+             !s.clinicBranch?.trim() &&
+             !s.clinicLocation?.trim()
+    })
+
     return {
       currentStaff,
-      officeRoles,
-      branchRoles,
       saveStaff,
       resetForm,
       branches,
-      loadBranches
+      loadBranches,
+      isFormEmpty
     }
   }
 }
@@ -153,69 +162,42 @@ export default {
           <div class="grid grid-cols-2 gap-4">
             <div>
               <label class="block text-slate-400 mb-1">First Name</label>
-              <input
-                type="text"
-                v-model="currentStaff.firstName"
-                placeholder="Enter first name"
+              <input type="text" v-model="currentStaff.firstName" placeholder="Enter first name"
                 class="w-full px-3 py-2 rounded-lg bg-slate-700 text-white border border-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
             <div>
               <label class="block text-slate-400 mb-1">Last Name</label>
-              <input
-                type="text"
-                v-model="currentStaff.lastName"
-                placeholder="Enter last name"
+              <input type="text" v-model="currentStaff.lastName" placeholder="Enter last name"
                 class="w-full px-3 py-2 rounded-lg bg-slate-700 text-white border border-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
           </div>
 
-          <!-- Email -->
           <div>
             <label class="block text-slate-400 mb-1">Email</label>
-            <input
-              type="email"
-              v-model="currentStaff.email"
-              placeholder="Enter staff email"
+            <input type="email" v-model="currentStaff.email" placeholder="Enter staff email"
               class="w-full px-3 py-2 rounded-lg bg-slate-700 text-white border border-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
 
-          <!-- Level -->
           <div>
-            <label class="block text-slate-400 mb-1">Level</label>
-            <select
-              v-model="currentStaff.level"
+            <label class="block text-slate-400 mb-1">Phone Number</label>
+            <input type="text" v-model="currentStaff.phoneNumber" placeholder="Enter staff phone number"
               class="w-full px-3 py-2 rounded-lg bg-slate-700 text-white border border-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option disabled value="">Select Level</option>
-              <option>Office</option>
-              <option>Branch</option>
-            </select>
+            />
           </div>
 
-          <!-- Role -->
           <div>
             <label class="block text-slate-400 mb-1">Role</label>
-            <select
-              v-model="currentStaff.role"
-              class="w-full px-3 py-2 rounded-lg bg-slate-700 text-white border border-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option disabled value="">Select Role</option>
-              <option v-for="role in (currentStaff.level === 'Office' ? officeRoles : branchRoles)" :key="role">
-                {{ role }}
-              </option>
-            </select>
+            <input type="text" v-model="currentStaff.role" readonly
+              class="w-full px-3 py-2 rounded-lg bg-slate-700 text-white border border-slate-600 cursor-not-allowed"/>
           </div>
 
-          <!-- Branch -->
-          <div v-if="currentStaff.level === 'Branch'">
+          <div>
             <label class="block text-slate-400 mb-1">Branch</label>
-            <select
-              v-model="currentStaff.branch"
-              class="w-full px-3 py-2 rounded-lg bg-slate-700 text-white border border-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
+            <select v-model="currentStaff.clinicBranch"
+              class="w-full px-3 py-2 rounded-lg bg-slate-700 text-white border border-slate-600 focus:ring-2 focus:ring-blue-500">
               <option disabled value="">Select Branch</option>
               <option v-for="branch in branches" :key="branch.id" :value="branch.branch">
                 {{ branch.branch }} - {{ branch.location }}
@@ -223,26 +205,26 @@ export default {
             </select>
           </div>
 
-          <!-- Status -->
+           <div>
+            <label class="block text-slate-400 mb-1">Clinic Location</label>
+            <input type="text" v-model="currentStaff.clinicLocation" placeholder="Enter clinic location"
+              class="w-full px-3 py-2 rounded-lg bg-slate-700 text-white border border-slate-600 focus:ring-2 focus:ring-blue-500"/>
+          </div>
+
           <div>
             <label class="block text-slate-400 mb-1">Status</label>
-            <input
-              type="text"
-              v-model="currentStaff.status"
-              readonly
+            <input type="text" v-model="currentStaff.status" readonly
               class="w-full px-3 py-2 rounded-lg bg-slate-700 text-white border border-slate-600 cursor-not-allowed"
             />
           </div>
 
           <!-- Buttons -->
           <div class="flex justify-end space-x-2 pt-4">
-            <button type="reset" @click="resetForm" class="bg-slate-600 hover:bg-slate-700 text-white px-4 py-2 rounded transition">
+            <button type="reset" @click="resetForm" :disabled="isFormEmpty" class="bg-slate-600 hover:bg-slate-700 text-white px-4 py-2 rounded transition
+              disabled:opacity-50 disabled:cursor-not-allowed">
               Cancel
             </button>
-            <button type="button" 
-              @click="saveStaff" 
-              class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded transition"
-            >
+            <button type="button" @click="saveStaff" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded transition">
               Add Staff
             </button>
           </div>

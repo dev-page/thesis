@@ -13,6 +13,9 @@ export default {
     const totalPayroll = ref(0);
     const revenue = ref(0);
 
+    const lastMonthPayroll = ref(0);
+    const lastMonthRevenue = ref(0);
+
     // Branches with employees and proposed salaries
     const branches = ref([]);
     const reports = ref([]);
@@ -22,7 +25,43 @@ export default {
       // Here you could open a modal or navigate to an edit page
     };
 
-    const payrollPercentage = computed(() => revenue.value ? ((totalPayroll.value / revenue.value) * 100).toFixed(1) : 0 );
+    const payrollPercentage = computed(() => 
+      revenue.value ? ((totalPayroll.value / revenue.value) * 100).toFixed(1) : 0 
+    );
+
+    const revenueGrowth = computed(() => {
+      if(!lastMonthRevenue.value) return 0
+      return (((revenue.value - lastMonthRevenue.value) / lastMonthRevenue.value) * 100).toFixed(1)
+    })
+
+    const payrollGrowth = computed(() => {
+      if(!lastMonthPayroll.value) return 0
+      return (((totalPayroll.value - lastMonthPayroll.value) / lastMonthPayroll.value) * 100).toFixed(1)
+    })
+
+    const revenueGrowthClass = computed(() => {
+      if(revenueGrowth.value > 0) return 'text-green-500'
+      if(revenueGrowth.value < 0) return 'text-red-500'
+      return 'text-slate-500'
+    })
+
+    const payrollGrowthClass = computed(() => {
+      if(payrollGrowth.value > 0) return 'text-green-500'
+      if(payrollGrowth.value < 0) return 'text-red-500'
+      return 'text-slate-500'
+    })
+
+    const healthyRangeText = computed(() => {
+      const percentage = parseFloat(payrollPercentage.value)
+      if (percentage >= 35 && percentage <= 45) {
+        return { text: "Within healthy range (35–45%)", class: "text-white" }
+      } else if (percentage < 35) {
+        return { text: "Below healthy range (<35%)", class: "text-red-500" }
+      } else if (percentage > 45) {
+        return { text: "Above healthy range (>45%)", class: "text-green-500" }
+      }
+      return { text: "No data", class: "text-slate-500" }
+    })
 
     // Canvas refs
     const payrollChart = ref(null);
@@ -31,17 +70,45 @@ export default {
     let financeChartInstance = null;
 
     const loadFinanceData = async () => {
-      const snapshot = await getDocs(collection(db, "clinics"));
-      const branchData = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+      const clinicSnapshot = await getDocs(collection(db, "clinics"));
+      const clinicData = clinicSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+      branches.value = clinicData;
 
-      branches.value = branchData;
+      const staffSnapshot = await getDocs(collection(db, "users"));
+      const staffData = staffSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })).filter(u => u.userType === 'Staff');
 
-      totalPayroll.value = branchData.reduce((sum, b) => sum + (b.employees ? b.employees.reduce((s, e) => s + (e.proposedSalary || 0), 0) : 0), 0);
-      revenue.value = branchData.reduce((sum, b) => sum + (b.revenue || 0), 0);
+      reports.value = staffData.map(s => {
+        const clinic = clinicData.value.find(c => c.clinicBranch === s.clinicBranch && c.clinicLocation === s.clinicLocation);
+        return {
+          branch: s.clinicBranch,
+          location: clinic ? c.clinicLocation : '-',
+          employee: s.name || `${s.firstName} ${s.lastName}`,
+          proposedSalary: s.proposedSalary || 0,
+          status: s.status || 'Pending'
+        }
+      });
+
+      totalPayroll.value = reports.value.reduce((sum, r) => sum + (r.proposedSalary || 0), 0);
+      revenue.value = clinicData.reduce((sum, b) => sum + (b.revenue || 0), 0);
+
+      const historySnapshot = await getDocs(collection(db, "financeHistory"));
+      const historyData = historySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+      historyData.sort((a, b) => new Date(b.month) - new Date(a.month)); // Sort by most recent
+
+      if(historyData.length > 1) {
+        lastMonthPayroll.value = historyData[1].totalPayroll;
+        lastMonthRevenue.value = historyData[1].revenue;
+      } else {
+        lastMonthPayroll.value = 0;
+        lastMonthRevenue.value = 0;
+      }
     }
 
     // Payroll by branch chart
     const renderPayrollChart = () => {
+      if (!payrollChart.value) return;
+
       const labels = branches.value.map(b => b.clinicBranch || b.name || b.clinicName);
       const data = branches.value.map(b => b.employees ? b.employees.reduce((sum, e) => sum + (e.proposedSalary || 0), 0) : 0);
 
@@ -129,7 +196,8 @@ export default {
 
     return {
       totalPayroll, revenue, payrollPercentage,
-      branches, payrollChart, financeChart, reports, editReport
+      branches, payrollChart, financeChart, reports, editReport,
+      revenueGrowth, payrollGrowth, revenueGrowthClass, payrollGrowthClass, healthyRangeText
     };
   }
 };
@@ -151,19 +219,19 @@ export default {
         <div class="bg-slate-800 rounded-xl p-4 md:p-6 border border-slate-700">
           <h3 class="text-slate-400 text-sm mb-1">Total Payroll</h3>
           <p class="text-2xl md:text-3xl font-bold text-white">${{ totalPayroll }}</p>
-          <p class="text-xs text-green-500 mt-1">+5% from last month</p>
+          <p class="text-xs text-green-500 mt-1">{{ payrollGrowth }}% from last month</p>
         </div>
 
         <div class="bg-slate-800 rounded-xl p-4 md:p-6 border border-slate-700">
           <h3 class="text-slate-400 text-sm mb-1">Revenue This Month</h3>
           <p class="text-2xl md:text-3xl font-bold text-white">${{ revenue }}</p>
-          <p class="text-xs text-green-500 mt-1">+8% growth</p>
+          <p class="text-xs text-green-500 mt-1">{{ revenueGrowth }}% from last month</p>
         </div>
 
         <div class="bg-slate-800 rounded-xl p-4 md:p-6 border border-slate-700">
           <h3 class="text-slate-400 text-sm mb-1">Payroll % of Revenue</h3>
           <p class="text-2xl md:text-3xl font-bold text-white">{{ payrollPercentage }}%</p>
-          <p class="text-xs text-slate-500 mt-1">Healthy range: 35–45%</p>
+          <p class="text-xs text-slate-500 mt-1">{{ healthyRangeText.text }}</p>
         </div>
       </div>
 
@@ -172,6 +240,7 @@ export default {
             <thead class="bg-slate-700">
             <tr>
                 <th class="px-4 md:px-6 py-2 text-left text-xs md:text-sm font-medium text-slate-300 uppercase tracking-wider">Branch</th>
+                <th class="px-4 md:px-6 py-2 text-left text-xs md:text-sm font-medium text-slate-300 uppercase tracking-wider">Location</th>
                 <th class="px-4 md:px-6 py-2 text-left text-xs md:text-sm font-medium text-slate-300 uppercase tracking-wider">Employee</th>
                 <th class="px-4 md:px-6 py-2 text-left text-xs md:text-sm font-medium text-slate-300 uppercase tracking-wider">Proposed Salary</th>
                 <th class="px-4 md:px-6 py-2 text-left text-xs md:text-sm font-medium text-slate-300 uppercase tracking-wider">Status</th>
@@ -181,6 +250,7 @@ export default {
             <tbody class="bg-slate-800 divide-y divide-slate-700">
             <tr v-for="(report, index) in reports" :key="index" class="hover:bg-slate-700">
                 <td class="px-4 md:px-6 py-2 text-slate-200 whitespace-nowrap">{{ report.branch }}</td>
+                <td class="px-4 md:px-6 py-2 text-slate-200">{{ report.location }}</td>
                 <td class="px-4 md:px-6 py-2 text-slate-200">{{ report.employee }}</td>
                 <td class="px-4 md:px-6 py-2 text-slate-200">${{ report.proposedSalary }}</td>
                 <td class="px-4 md:px-6 py-2 text-slate-200">{{ report.status }}</td>
@@ -192,6 +262,11 @@ export default {
                     Edit
                 </button>
                 </td>
+            </tr>
+            <tr v-if="reports.length === 0">
+              <td colspan="6" class="px-4 py-6 text-center text-slate-400">
+                No Results Found
+              </td>
             </tr>
             </tbody>
         </table>

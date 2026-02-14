@@ -18,27 +18,22 @@ export default {
     const branches = ref([])
 
     const showEditModal = ref(false)
+    const searchQuery = ref('')
 
     const currentStaff = ref({
       id: null,
       firstName: '',
       lastName: '',
       email: '',
+      phoneNumber: '',
       role: '',
-      userType: 'Staff',
-      level: '',
       branch: '',
+      location: '',
+      userType: 'Staff',
       status: 'Active'
     })
-    
-    const officeRoles = ['HR', 'CRM', 'Supply', 'Finance']
-    const branchRoles = ['Manager','Cashier', 'Practitioner']
 
-    const filteredRoles = computed(() => {
-      if (currentStaff.value.level === 'Office') return officeRoles
-      if (currentStaff.value.level === 'Branch') return branchRoles
-      return []
-    })
+    const roleOptions = ['HR', 'Manager', 'Cashier', 'Practitioner', 'CRM', 'Supply', 'Finance']
 
     const loadStaff = async () => {
       const snapshot = await getDocs(collection(db, "users"))
@@ -131,7 +126,7 @@ export default {
       try {
         await deleteDoc(doc(db, "users", staff.id))
         staffList.value = staffList.value.filter((s) => s.id !== staff.id)
-        toast.success(`${fullName} has been deleted successfully.`)
+        toast.success(`Staff has been deleted successfully.`)
         await loadStaff()
       } catch (error) {
         console.error("Error deleting staff:", error)
@@ -140,11 +135,11 @@ export default {
     }
 
     const saveStaff = async () => {
-      const { firstName, lastName, email, role } = currentStaff.value
+      const { firstName, lastName, email, phoneNumber, role, clinicBranch, clinicLocation } = currentStaff.value
       const fullName = `${firstName} ${lastName}`
 
-      if (!firstName.trim() || !lastName.trim() || !email.trim() || !role.trim()) {
-        toast.error('First name, last name, email, and role are required.')
+      if (!firstName.trim() || !lastName.trim() || !email.trim() || !phoneNumber.trim() || !role.trim(), !clinicBranch.trim() || !clinicLocation.trim()) {
+        toast.error('All fields are required.')
         return
       }
 
@@ -167,7 +162,16 @@ export default {
           }
 
           const staffRef = doc(db, "users", currentStaff.value.id)
-          await updateDoc(staffRef, { ...currentStaff.value })
+          await updateDoc(staffRef, { 
+            firstName: currentStaff.value.firstName.trim,
+            lastName: currentStaff.value.lastName.trim(),
+            email: currentStaff.value.email.trim(),
+            phoneNumber: currentStaff.value.phoneNumber,
+            role: currentStaff.value.role,
+            clinicBranch: currentStaff.value.clinicBranch,
+            clinicLocation: currentStaff.value.clinicLocation,
+            status: currentStaff.value.status
+          })
           toast.success(`${fullName}'s information updated successfully!`)
           await loadStaff()
         }
@@ -179,6 +183,15 @@ export default {
       showEditModal.value = false
     }
 
+    const filteredStaffList = computed(() => {
+      if (!searchQuery.value.trim()) return staffList.value
+      const query = searchQuery.value.toLowerCase()
+      return staffList.value.filter(staff =>
+        (staff.clinicBranch && staff.clinicBranch.toLowerCase().includes(query)) ||
+        (staff.clinicLocation && staff.clinicLocation.toLowerCase().includes(query))
+      )
+    })
+
     return {
       staffList,
       branches,
@@ -188,7 +201,8 @@ export default {
       deactivateStaff,
       deleteStaff,
       saveStaff,
-      filteredRoles
+      searchQuery,
+      filteredStaffList
     }
   }
 }
@@ -207,6 +221,16 @@ export default {
         </div>
       </div>
 
+      <!-- Search Filter -->
+      <div class="mb-4">
+        <input
+          type="text"
+          v-model="searchQuery"
+          placeholder="Search by branch or location..."
+          class="w-full md:w-1/3 px-3 py-2 rounded-lg bg-slate-700 text-white border border-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+      </div>
+
       <!-- Staff Table -->
       <div class="bg-slate-800 rounded-xl p-4 sm:p-6 border border-slate-700 overflow-x-auto">
         <table class="w-full text-left min-w-[500px] sm:min-w-[700px] border-collapse">
@@ -214,21 +238,23 @@ export default {
             <tr class="text-slate-400 uppercase text-xs sm:text-sm border-b border-slate-700">
               <th class="py-2 px-2 sm:py-3 sm:px-4">Name</th>
               <th class="py-2 px-2 sm:py-3 sm:px-4">Email</th>
+              <th class="py-2 px-2 sm:py-3 sm:px-4">Phone Number</th>
               <th class="py-2 px-2 sm:py-3 sm:px-4">Role</th>
-              <th class="py-2 px-2 sm:py-3 sm:px-4">Level</th>
               <th class="py-2 px-2 sm:py-3 sm:px-4">Branch</th>
+              <th class="py-2 px-2 sm:py-3 sm:px-4">Location</th>
               <th class="py-2 px-2 sm:py-3 sm:px-4">Status</th>
               <th class="py-2 px-2 sm:py-3 sm:px-4">Actions</th>
             </tr>
           </thead>
           <tbody class="text-white">
-            <tr v-for="staff in staffList" :key="staff.id" class="hover:bg-slate-700 transition-colors">
+            <tr v-for="staff in filteredStaffList" :key="staff.id" class="hover:bg-slate-700 transition-colors">
               <!-- Name column now combines firstName + lastName -->
               <td class="py-2 px-2 sm:py-3 sm:px-4 font-medium">{{ staff.firstName }} {{ staff.lastName }}</td>
               <td class="py-2 px-2 sm:py-3 sm:px-4">{{ staff.email }}</td>
-              <td class="py-2 px-2 sm:py-3 sm:px-4">{{ staff.role }}</td>
-              <td class="py-2 px-2 sm:py-3 sm:px-4">{{ staff.level }}</td>
-              <td class="py-2 px-2 sm:py-3 sm:px-4">{{ staff.level === 'Branch' ? staff.branch : '-' }}</td>
+              <td class="py-2 px-2 sm:py-3 sm:px-4">{{ staff.phoneNumber || '-' }}</td>
+              <td class="py-2 px-2 sm:py-3 sm:px-4">{{ staff.role || '-' }}</td>
+              <td class="py-2 px-2 sm:py-3 sm:px-4">{{ staff.clinicBranch }}</td>
+              <td class="py-2 px-2 sm:py-3 sm:px-4">{{ staff.clinicLocation || '-' }}</td>
               <td class="py-2 px-2 sm:py-3 sm:px-4">
                 <span
                   @click="deactivateStaff(staff)"
@@ -251,7 +277,7 @@ export default {
             </tr>
 
             <tr v-if="staffList.length === 0">
-              <td colspan="7" class="py-6 text-center text-slate-400">No Results Found</td>
+              <td colspan="8" class="py-6 text-center text-slate-400">No Results Found</td>
             </tr>
           </tbody>
         </table>
@@ -271,6 +297,7 @@ export default {
                 <input type="text" v-model="currentStaff.firstName" placeholder="First Name"
                   class="w-full px-3 py-2 rounded-lg bg-slate-700 text-white border border-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500"/>
               </div>
+
               <div>
                 <label class="block text-slate-400 mb-1">Last Name</label>
                 <input type="text" v-model="currentStaff.lastName" placeholder="Last Name"
@@ -285,31 +312,31 @@ export default {
             </div>
 
             <div>
-              <label class="block text-slate-400 mb-1">Level</label>
-              <select v-model="currentStaff.level"
-                class="w-full px-3 py-2 rounded-lg bg-slate-700 text-white border border-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                <option disabled value="">Select level</option>
-                <option>Branch</option>
-                <option>Office</option>
-              </select>
-            </div>
-
-            <div v-if="currentStaff.level === 'Branch'">
-              <label class="block text-slate-400 mb-1">Branch</label>
-              <select v-model="currentStaff.branch"
-                class="w-full px-3 py-2 rounded-lg bg-slate-700 text-white border border-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                <option disabled value="">Select branch</option>
-                <option v-for="b in branches" :key="b">{{ b }}</option>
-              </select>
+              <label class="block text-slate-400 mb-1">Phone Number</label>
+              <input type="text" v-model="currentStaff.phoneNumber" placeholder="Enter phone number"
+                class="w-full px-3 py-2 rounded-lg bg-slate-700 text-white border border-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500"/>
             </div>
 
             <div>
               <label class="block text-slate-400 mb-1">Role</label>
               <select v-model="currentStaff.role"
-                class="w-full px-3 py-2 rounded-lg bg-slate-700 text-white border border-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                class="w-full px-3 py-2 rounded-lg bg-slate-700 text-white border border-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500"/>
                 <option disabled value="">Select role</option>
-                <option v-for="role in filteredRoles" :key="role">{{ role }}</option>
-              </select>
+                <option v-for="role in roleOptions" :key="role">{{ role }}</option>
+              </div>
+
+            <div>
+              <label class="block text-slate-400 mb-1">Branch</label>
+              <select v-model="currentStaff.clinicBranch"
+                class="w-full px-3 py-2 rounded-lg bg-slate-700 text-white border border-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500"/>
+                <option disabled value="">Select branch</option>
+                <option v-for="clinicBranch in branches" :key="clinicBranch">{{ clinicBranch }}</option>
+              </div>
+
+            <div>
+              <label class="block text-slate-400 mb-1">Clinic Location</label>
+              <input type="text" v-model="currentStaff.clinicLocation" placeholder="Enter clinic location"
+                class="w-full px-3 py-2 rounded-lg bg-slate-700 text-white border border-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500"/>
             </div>
 
             <div>

@@ -1,6 +1,6 @@
 <script>
 import { ref, onMounted, computed } from 'vue'
-import { getFirestore, collection, getDocs, updateDoc, doc, setDoc } from 'firebase/firestore'
+import { getFirestore, collection, getDocs, updateDoc, doc } from 'firebase/firestore'
 import { getApp } from 'firebase/app'
 import { getAuth } from 'firebase/auth'
 import OwnerSidebar from '@/components/sidebar/OwnerSidebar.vue'

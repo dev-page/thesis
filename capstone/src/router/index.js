@@ -37,11 +37,11 @@ const routes = [
   { path: "/hr/employee-profile", name: "hr-employee-profile", component: () => import("@/views/admin/hr/EmployeeProfile.vue"), meta: { requiresAuth: true } },
   { path: "/hr/add-employee", name: "hr-add-employee", component: () => import("@/views/admin/hr/AddEmployee.vue"), meta: { requiresAuth: true } },
   { path: "/hr/sales", name: "hr-sales", component: () => import("@/views/admin/hr/HRSales.vue"), meta: { requiresAuth: true } },
-  { path: "/hr/schedule", name: "hr-schedule", component: () => import("@/views/admin/hr/HRSchedule.vue"), meta: { requiresAuth: true } },
+  //{ path: "/hr/schedule", name: "hr-schedule", component: () => import("@/views/admin/hr/HRSchedule.vue"), meta: { requiresAuth: true } },
   { path: "/hr/shift-list", name: "hr-shift-list", component: () => import("@/views/admin/hr/ShiftList.vue"), meta: { requiresAuth: true } },
   { path: "/hr/add-shift", name: "hr-add-shift", component: () => import("@/views/admin/hr/AddShift.vue"), meta: { requiresAuth: true } },
   { path: "/hr/shift-assignment", name: "hr-shift-assignment", component: () => import("@/views/admin/hr/ShiftAssignment.vue"), meta: { requiresAuth: true } },
-    { path: "/hr/calendar", name: "hr-calendar", component: () => import("@/views/admin/hr/Calendar.vue"), meta: { requiresAuth: true } },
+  //{ path: "/hr/calendar", name: "hr-calendar", component: () => import("@/views/admin/hr/Calendar.vue"), meta: { requiresAuth: true } },
 
   // Supply routes
   { path: "/supply/dashboard", name: "supply-dashboard", component: () => import("@/views/admin/supply/SupplyDashboard.vue"), meta: { requiresAuth: true } },

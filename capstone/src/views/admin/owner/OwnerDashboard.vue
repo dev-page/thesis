@@ -1,8 +1,11 @@
 <script>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, render } from 'vue'
 import { getFirestore, collection, getDocs } from 'firebase/firestore';
 import { getApp } from 'firebase/app'
 import OwnerSidebar from '@/components/sidebar/OwnerSidebar.vue'
+import { Chart, registerables } from 'chart.js';
+
+Chart.register(...registerables)
 
 export default {
   name: 'OwnerDashboard',
@@ -16,6 +19,11 @@ export default {
 
     const branches = ref([])
     const staff = ref([])
+
+    const revenueChartRef = ref(null)
+    const employeeChartRef = ref(null)
+    let revenueChartInstance = null
+    let employeeChartInstance = null
 
     const loadDashboardData = async () => {
       try {
@@ -31,18 +39,99 @@ export default {
         totalEmployees.value = staff.value.length
         
         monthlyRevenue.value = branches.value.reduce((sum, b) => sum + (b.revenue || 0), 0)
+        
+        renderRevenueChart()
+        
+        if(branches.value.length > 0) {
+          renderEmployeeChart()
+        }
       } catch (error) {
         console.error("Error loading dashboard data:", error)
       }
     };
+    
+    const renderRevenueChart = () => {
+      if(!revenueChartRef.value) return
 
-    onMounted(loadDashboardData)
+      const labels = branches.value.map(b => `${b.clinicBranch} (${b.clinicLocation || 'Unknown'})`)
+      const revenues = branches.value.map(b => b.revenue || 0)
+
+      if(revenueChartInstance) revenueChartInstance.destroy()
+
+      revenueChartInstance = new Chart(revenueChartRef.value, {
+        type: 'bar',
+        data: {
+          labels,
+          datasets: [
+            {
+              label: 'Revenue (₱)',
+              data: revenues,
+              backgroundColor: 'rgba(255, 215, 0, 0.7)',
+              borderColor: 'rgba(255, 215, 0, 1)',
+              borderWidth: 1
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            title: { display: true, text: 'Branch Performance' }
+          }
+        }
+      })
+    }
+
+    const renderEmployeeChart = () => {
+      if(!employeeChartRef.value) return
+
+      const roleCounts = {}
+      staff.value.forEach(s => {
+        const key = `${s.clinicBranch} - ${s.role}`
+        roleCounts[key] = (roleCounts[key] || 0) + 1
+      })
+
+      const labels = Object.keys(roleCounts)
+      const data = Object.values(roleCounts)
+
+      if(employeeChartInstance) employeeChartInstance.destroy()
+
+      employeeChartInstance = new Chart(employeeChartRef.value, {
+        type: 'pie',
+        data: {
+          labels,
+          datasets: [
+            {
+              label: 'Employees by Role',
+              data,
+              backgroundColor: ['rgba(30, 144, 255, 0.7)', 'rgba(255, 99, 132, 0.7)'],
+              borderColor: ['rgba(30, 144, 255, 1)', 'rgba(255, 99, 132, 1)'],
+              borderWidth: 1
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            title: { display: true, text: 'Employees Distibution by Branch & Role' }
+          }
+        }
+      })
+    }
+
+    onMounted(async () => {
+      await loadDashboardData()
+      renderRevenueChart()
+      renderEmployeeChart()
+    })
 
     return {
       totalBranches,
       totalEmployees,
       monthlyRevenue,
-      branches
+      branches,
+      staff,
+      revenueChartRef,
+      employeeChartRef
     }
   }
 }
@@ -64,93 +153,37 @@ export default {
       <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <!-- Branches -->
         <div class="bg-slate-800 rounded-xl p-6 border border-slate-700">
-          <div class="flex items-center justify-between mb-4">
-            <div class="h-12 w-12 rounded-lg bg-gold-700/20 flex items-center justify-center">
-              <span class="text-gold-700 text-xl font-bold">🏥</span>
-            </div>
-          </div>
           <h3 class="text-slate-400 text-sm mb-1">Total Branches</h3>
           <p class="text-3xl font-bold text-white">{{ totalBranches }}</p>
-          <p class="text-xs text-slate-400 mt-1">Across all regions</p>
         </div>
 
         <!-- Employees -->
         <div class="bg-slate-800 rounded-xl p-6 border border-slate-700">
-          <div class="flex items-center justify-between mb-4">
-            <div class="h-12 w-12 rounded-lg bg-blue-500/20 flex items-center justify-center">
-              <span class="text-blue-400 text-xl font-bold">👥</span>
-            </div>
-          </div>
           <h3 class="text-slate-400 text-sm mb-1">Total Employees</h3>
           <p class="text-3xl font-bold text-white">{{ totalEmployees }}</p>
-          <p class="text-xs text-slate-400 mt-1">Doctors, nurses & staff</p>
         </div>
 
         <!-- Revenue -->
         <div class="bg-slate-800 rounded-xl p-6 border border-slate-700">
-          <div class="flex items-center justify-between mb-4">
-            <div class="h-12 w-12 rounded-lg bg-green-500/20 flex items-center justify-center">
-              <span class="text-green-400 text-xl font-bold">$</span>
-            </div>
-          </div>
           <h3 class="text-slate-400 text-sm mb-1">Monthly Revenue</h3>
           <p class="text-3xl font-bold text-white">
-            ${{ monthlyRevenue ? monthlyRevenue.toLocaleString() : 0 }}
+            ₱{{ monthlyRevenue ? monthlyRevenue.toLocaleString("en-PH") : 0 }}
           </p>
-          <p class="text-xs text-green-400 mt-1">+8% from last month</p>
         </div>
       </div>
 
-      <!-- Branch List -->
+      <!-- Branch Performance -->
       <div class="bg-slate-800 rounded-xl p-6 border border-slate-700 mb-8">
-        <h2 class="text-xl font-semibold text-white mb-6">Branches Performance</h2>
-
-        <div class="space-y-4">
-          <div
-            v-for="branch in branches"
-            :key="branch.id"
-            class="flex items-center justify-between p-4 bg-slate-700 rounded-lg hover:bg-slate-600 transition"
-          >
-            <div>
-              <p class="text-white font-medium">{{ branch.name }}</p>
-              <p class="text-slate-400 text-sm">
-                {{ branch.employees || 0 }} employees • ${{ branch.revenue ? branch.revenue.toLocaleString() : 0 }} revenue
-              </p>
-            </div>
-
-            <span
-              :class="[
-                'px-3 py-1 rounded-full text-xs font-medium',
-                branch.status === 'Active'
-                  ? 'bg-green-500/20 text-green-400'
-                  : 'bg-yellow-500/20 text-yellow-400'
-              ]"
-            >
-              {{ branch.status }}
-            </span>
-          </div>
-        </div>
+        <h2 class="text-xl font-semibold text-white mb-6">Branch Revenue Performance</h2>
+        <canvas ref="revenueChartRef"></canvas>
       </div>
 
-      <!-- Revenue Distribution -->
+      <!-- Employee Pie Chart -->
       <div class="bg-slate-800 rounded-xl p-6 border border-slate-700">
-        <h2 class="text-xl font-semibold text-white mb-6">Revenue Distribution</h2>
-
-        <div class="space-y-4">
-          <div v-for="branch in branches" :key="branch.id">
-            <div class="flex justify-between text-sm mb-1">
-              <span class="text-white">{{ branch.name }}</span>
-              <span class="text-slate-400">${{ branch.revenue ? branch.revenue.toLocaleString() : 0 }}</span>
-            </div>
-            <div class="w-full bg-slate-700 rounded-full h-2">
-              <div
-                class="h-2 rounded-full bg-gold-700"
-                :style="{ width: monthlyRevenue ? `${(branch.revenue / monthlyRevenue) * 100}%` : '0%' }"
-              ></div>
-            </div>
-          </div>
-        </div>
+        <h2 class="text-xl font-semibold text-white mb-6">Employees by Role</h2>
+        <canvas ref="employeeChartRef"></canvas>
       </div>
+
     </main>
   </div>
 </template>

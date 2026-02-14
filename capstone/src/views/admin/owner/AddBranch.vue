@@ -1,5 +1,5 @@
 <script>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { getFirestore, collection, addDoc, serverTimestamp } from 'firebase/firestore'
 import { getApp } from 'firebase/app'
 import { getAuth } from 'firebase/auth'
@@ -26,6 +26,13 @@ export default {
     const resetForm = () => {
       currentBranch.value = { id: null, name: '', revenue: 0, status: 'Active', location: '' }
     }
+
+    const isFormEmpty = computed(() => {
+      const b = currentBranch.value
+      return !b.name?.trim() &&
+             !b.location?.trim() &&
+              (b.revenue || b.revenue === 0)
+    })
 
     const saveBranch = async () => {
       if (!currentBranch.value.name || !currentBranch.value.name.trim()) {
@@ -86,7 +93,8 @@ export default {
       branches,
       currentBranch,
       saveBranch,
-      resetForm
+      resetForm,
+      isFormEmpty
     }
   }
 }
@@ -145,18 +153,13 @@ export default {
 
         <!-- Action Buttons -->
         <div class="flex justify-end space-x-2 pt-4">
-          <button 
-            type="reset" 
-            @click="resetForm" 
-            class="bg-slate-600 hover:bg-slate-700 text-white px-4 py-2 rounded transition"
-          >
+          <button type="reset" @click="resetForm" :disabled="isFormEmpty"
+            class="bg-slate-600 hover:bg-slate-700 text-white px-4 py-2 rounded transition
+              disabled:opacity-50 disabled:cursor-not-allowed">
             Cancel
           </button>
-          <button 
-            type="button" 
-            @click="saveBranch" 
-            class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded transition"
-          >
+          <button type="button" @click="saveBranch" 
+            class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded transition">
             Add Branch
           </button>
         </div>

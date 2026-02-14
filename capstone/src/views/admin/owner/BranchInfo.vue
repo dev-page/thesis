@@ -214,10 +214,10 @@ export default {
               class="hover:bg-slate-700 transition-colors"
             >
               <td class="py-2 px-2 sm:py-3 sm:px-4 font-medium">{{ branch.clinicBranch }}</td>
-              <td class="py-2 px-2 sm:py-3 sm:px-4">${{ branch.revenue ? branch.revenue.toLocaleString() : 0 }}</td>
+              <td class="py-2 px-2 sm:py-3 sm:px-4">₱{{ branch.revenue ? branch.revenue.toLocaleString() : 0 }}</td>
               <td class="py-2 px-2 sm:py-3 sm:px-4">
                 <span
-                @click="deactivateBranch(branch)"
+                @click="toggleStatus(branch)"
                   :class="[
                     'px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-medium cursor-pointer',
                     branch.status === 'Active'
