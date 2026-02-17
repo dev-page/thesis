@@ -132,13 +132,14 @@ const registerClinic = async () => {
       lastName: lastName.value.trim(),
       birthDate: birthDate.value ? new Date(birthDate.value) : null,
       email: email.value.trim(),
-      contactNumber: contactNumber.value.trim(),
+      contactNumber: `0${contactNumber.value.trim()}`,
       role: 'Owner',
       status: 'Pending',
       createdAt: serverTimestamp(),
     })
 
     await setDoc(doc(db, 'clinics', uid), {
+      branchId: uid,
       clinicName: clinicName.value.trim(),
       clinicLocation: clinicLocation.value.trim(),
       clinicBranch: 'Main Branch',

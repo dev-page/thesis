@@ -27,8 +27,7 @@ export default {
       email: '',
       phoneNumber: '',
       role: '',
-      branch: '',
-      location: '',
+      branchId: '',
       userType: 'Staff',
       status: 'Active'
     })
@@ -37,19 +36,30 @@ export default {
 
     const loadStaff = async () => {
       const snapshot = await getDocs(collection(db, "users"))
-      staffList.value = snapshot.docs
-        .map((doc) => ({ id: doc.id, ...doc.data() }))
-        .filter((user) => user.userType === 'Staff')
+      const staffDocs = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })).filter((user) => user.userType === 'Staff')
+
+      staffList.value = staffDocs.map(staff => {
+        const branch = branches.value.find(b => b.id === staff.branchId)
+        return {
+          ...staff,
+          clinicBranch: branch ? branch.clinicBranch : '',
+          clinicLocation: branch ? branch.clinicLocation : ''
+        }
+      })
     }
 
     const loadBranches = async () => {
       const snapshot = await getDocs(collection(db, "clinics"))
-      branches.value = snapshot.docs.map((doc) => doc.data().clinicBranch)
+      branches.value = snapshot.docs.map(doc => ({
+        id: doc.id,
+        clinicBranch: doc.data().clinicBranch,
+        clinicLocation: doc.data().clinicLocation
+      }))
     }
 
     onMounted(() => {
-      loadStaff()
-      loadBranches()
+      await loadStaff()
+      await loadBranches()
     })
 
     const openEditModal = (staff) => {
@@ -166,10 +176,9 @@ export default {
             firstName: currentStaff.value.firstName.trim,
             lastName: currentStaff.value.lastName.trim(),
             email: currentStaff.value.email.trim(),
-            phoneNumber: currentStaff.value.phoneNumber,
+            phoneNumber: currentStaff.value.phoneNumber.trim(),
             role: currentStaff.value.role,
-            clinicBranch: currentStaff.value.clinicBranch,
-            clinicLocation: currentStaff.value.clinicLocation,
+            branchId: currentStaff.value.branchId,
             status: currentStaff.value.status
           })
           toast.success(`${fullName}'s information updated successfully!`)
@@ -327,16 +336,13 @@ export default {
 
             <div>
               <label class="block text-slate-400 mb-1">Branch</label>
-              <select v-model="currentStaff.clinicBranch"
-                class="w-full px-3 py-2 rounded-lg bg-slate-700 text-white border border-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500"/>
+              <select v-model="currentStaff.branchId"
+                class="w-full px-3 py-2 rounded-lg bg-slate-700 text-white border border-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500">
                 <option disabled value="">Select branch</option>
-                <option v-for="clinicBranch in branches" :key="clinicBranch">{{ clinicBranch }}</option>
-              </div>
-
-            <div>
-              <label class="block text-slate-400 mb-1">Clinic Location</label>
-              <input type="text" v-model="currentStaff.clinicLocation" placeholder="Enter clinic location"
-                class="w-full px-3 py-2 rounded-lg bg-slate-700 text-white border border-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500"/>
+                <option v-for="branch in branches" :key="branch.id" :value="branch.id">
+                  {{ branch.clinicBranch }} - {{ branch.clinicLocation }}
+                </option>
+              </select>
             </div>
 
             <div>

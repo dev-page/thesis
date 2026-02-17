@@ -73,11 +73,17 @@ export default {
           createdAt: serverTimestamp()
         })
 
+        await setDoc(docRef, {
+          branchId: docRef.id
+        }, { merge: true })
+
         branches.value.push({
           id: docRef.id,
-          ...currentBranch.value,
+          branchId: docRef.id,
           clinicBranch: currentBranch.value.name.trim(),
           clinicLocation: currentBranch.value.location.trim(),
+          revenue: currentBranch.value.revenue,
+          status: currentBranch.value.status,
           ownerId: ownerId
         })
 

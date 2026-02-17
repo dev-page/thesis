@@ -22,8 +22,7 @@ export default {
       phoneNumber: '',
       role: 'HR',
       userType: 'Staff',
-      clinicBranch: '',
-      clinicLocation: '',
+      branchId: '',
       status: 'Active'
     })
 
@@ -32,8 +31,8 @@ export default {
       const snapshot = await getDocs(collection(db, "clinics"))
       branches.value = snapshot.docs.map(doc => ({
         id: doc.id,
-        branch: doc.data().clinicBranch,
-        location: doc.data().clinicLocation
+        clinicBranch: doc.data().clinicBranch,
+        clinicLocation: doc.data().clinicLocation
       }))
     }
 
@@ -49,8 +48,7 @@ export default {
         phoneNumber: '',
         role: 'HR',
         userType: 'Staff',
-        clinicBranch: '',
-        clinicLocation: '',
+        branchId: '',
         status: 'Active'
       }
     }
@@ -107,8 +105,7 @@ export default {
             phoneNumber: currentStaff.value.phoneNumber,
             role: 'HR',
             userType: 'Staff',
-            cliniBranch: currentStaff.value.branch,
-            clinicLocation: currentStaff.value.clinicLocation,
+            branchId: currentStaff.value.branchId,
             status: currentStaff.value.status ?? "Active",
             mustChangePassword: true,
             createdAt: new Date()
@@ -134,8 +131,7 @@ export default {
              !s.lastName?.trim() &&
              !s.email?.trim() &&
              !s.phoneNumber?.trim() &&
-             !s.clinicBranch?.trim() &&
-             !s.clinicLocation?.trim()
+             !s.branchId?.trim()
     })
 
     return {
@@ -196,19 +192,13 @@ export default {
 
           <div>
             <label class="block text-slate-400 mb-1">Branch</label>
-            <select v-model="currentStaff.clinicBranch"
+            <select v-model="currentStaff.branchId"
               class="w-full px-3 py-2 rounded-lg bg-slate-700 text-white border border-slate-600 focus:ring-2 focus:ring-blue-500">
               <option disabled value="">Select Branch</option>
-              <option v-for="branch in branches" :key="branch.id" :value="branch.branch">
-                {{ branch.branch }} - {{ branch.location }}
+              <option v-for="branch in branches" :key="branch.id" :value="branch.id">
+                {{ branch.clinicBranch }} - {{ branch.clinicLocation }}
               </option>
             </select>
-          </div>
-
-           <div>
-            <label class="block text-slate-400 mb-1">Clinic Location</label>
-            <input type="text" v-model="currentStaff.clinicLocation" placeholder="Enter clinic location"
-              class="w-full px-3 py-2 rounded-lg bg-slate-700 text-white border border-slate-600 focus:ring-2 focus:ring-blue-500"/>
           </div>
 
           <div>
