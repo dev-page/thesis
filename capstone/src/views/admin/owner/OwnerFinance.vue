@@ -218,13 +218,13 @@ export default {
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 mb-6 md:mb-8">
         <div class="bg-slate-800 rounded-xl p-4 md:p-6 border border-slate-700">
           <h3 class="text-slate-400 text-sm mb-1">Total Payroll</h3>
-          <p class="text-2xl md:text-3xl font-bold text-white">${{ totalPayroll }}</p>
+          <p class="text-2xl md:text-3xl font-bold text-white">₱{{ totalPayroll }}</p>
           <p class="text-xs text-green-500 mt-1">{{ payrollGrowth }}% from last month</p>
         </div>
 
         <div class="bg-slate-800 rounded-xl p-4 md:p-6 border border-slate-700">
           <h3 class="text-slate-400 text-sm mb-1">Revenue This Month</h3>
-          <p class="text-2xl md:text-3xl font-bold text-white">${{ revenue }}</p>
+          <p class="text-2xl md:text-3xl font-bold text-white">₱{{ revenue }}</p>
           <p class="text-xs text-green-500 mt-1">{{ revenueGrowth }}% from last month</p>
         </div>
 
@@ -252,7 +252,7 @@ export default {
                 <td class="px-4 md:px-6 py-2 text-slate-200 whitespace-nowrap">{{ report.branch }}</td>
                 <td class="px-4 md:px-6 py-2 text-slate-200">{{ report.location }}</td>
                 <td class="px-4 md:px-6 py-2 text-slate-200">{{ report.employee }}</td>
-                <td class="px-4 md:px-6 py-2 text-slate-200">${{ report.proposedSalary }}</td>
+                <td class="px-4 md:px-6 py-2 text-slate-200">₱{{ report.proposedSalary }}</td>
                 <td class="px-4 md:px-6 py-2 text-slate-200">{{ report.status }}</td>
                 <td class="px-4 md:px-6 py-2 text-center">
                 <button

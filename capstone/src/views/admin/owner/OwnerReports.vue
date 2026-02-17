@@ -9,22 +9,39 @@ export default {
   components: { OwnerSidebar },
   setup() {
     const db = getFirestore(getApp());
-    const totalBranches = ref(3);
-    const totalEmployees = ref(45);
-    const monthlyRevenue = ref(152300);
-    const newInquiries = ref(28);
+    const totalBranches = ref(0);
+    const totalEmployees = ref(0);
+    const monthlyRevenue = ref(0);
+    const newInquiries = ref(0);
 
     const branches = ref([]);
 
     const loadReports = async () => {
-      const snapshot = await getDocs(collection(db, "clinics"));
-      const branchData = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-      branches.value = branchData;
+      const clinicSnapshot = await getDocs(collection(db, "clinics"));
+      const clinicData = clinicSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
 
-      totalBranches.value = branchData.length;
-      totalEmployees.value = branchData.reduce((sum, b) => sum + (b.employees || 0), 0);
+      const staffSnapshot = await getDocs(collection(db, "users"));
+      const staffData = staffSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })).filter(u => u.userType === 'Staff');
+
+      totalBranches.value = clinicData.length;
+      totalEmployees.value = staffData.length;
       monthlyRevenue.value = branchData.reduce((sum, b) => sum + (b.revenue || 0), 0);
       newInquiries.value = branchData.reduce((sum, b) => sum + (b.newInquiries || 0), 0);
+
+      branches.value = clinicData.map(c => {
+        const staffForBranch = staffData.filter(s => s.clinicBranch === c.clinicBranch);
+        const employeesCount = staffForBranch.length;
+        const conversionRate = c.newInquiries ? ((c.newInquiries / (c.newInquiries)) * 100).toFixed(1) : 0;
+      })
+
+      return {
+        branch: c.clinicBranch,
+        location: c.location,
+        employees: employeesCount,
+        revenue: c.revenue || 0,
+        newInquiries: c.newInquiries || 0,
+        conversionRate
+      };
     };
 
     onMounted(loadReports);
@@ -62,7 +79,7 @@ export default {
 
         <div class="bg-slate-800 rounded-xl p-4 sm:p-6 border border-slate-700">
           <h3 class="text-slate-400 text-xs sm:text-sm mb-1">Monthly Revenue</h3>
-          <p class="text-2xl sm:text-3xl font-bold text-white">${{ monthlyRevenue }}</p>
+          <p class="text-2xl sm:text-3xl font-bold text-white">₱{{ monthlyRevenue }}</p>
         </div>
 
         <div class="bg-slate-800 rounded-xl p-4 sm:p-6 border border-slate-700">
@@ -79,6 +96,7 @@ export default {
           <thead>
             <tr class="text-slate-400 uppercase text-xs md:text-sm border-b border-slate-700">
               <th class="py-2 px-3 md:py-3 md:px-4">Branch</th>
+              <th class="py-2 px-3 md:py-3 md:px-4">Location</th>
               <th class="py-2 px-3 md:py-3 md:px-4">Employees</th>
               <th class="py-2 px-3 md:py-3 md:px-4">Revenue</th>
               <th class="py-2 px-3 md:py-3 md:px-4">New Inquiries</th>
@@ -92,10 +110,14 @@ export default {
               class="hover:bg-slate-700 transition-colors cursor-pointer"
             >
               <td class="py-2 px-3 md:py-3 md:px-4 font-medium">{{ branch.name }}</td>
+              <td class="py-2 px-3 md:py-3 md:px-4">{{ branch.location }}</td>
               <td class="py-2 px-3 md:py-3 md:px-4">{{ branch.employees }}</td>
-              <td class="py-2 px-3 md:py-3 md:px-4">${{ branch.revenue }}</td>
+              <td class="py-2 px-3 md:py-3 md:px-4">₱{{ branch.revenue }}</td>
               <td class="py-2 px-3 md:py-3 md:px-4">{{ branch.newInquiries }}</td>
               <td class="py-2 px-3 md:py-3 md:px-4">{{ branch.conversionRate }}%</td>
+            </tr>
+            <tr v-if="branches.length === 0">
+              <td colspan="6" class="py-4 text-center text-slate-400">No Results Found</td>
             </tr>
           </tbody>
         </table>
